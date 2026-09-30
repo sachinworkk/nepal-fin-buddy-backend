@@ -33,6 +33,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["alembic"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -44,3 +45,6 @@ asyncio_default_test_loop_scope = "session"
 pythonpath = ["."]
 markers = ["live_llm: calls real OpenRouter (needs OPENROUTER_API_KEY)"]
 addopts = "-m 'not live_llm'"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501"]

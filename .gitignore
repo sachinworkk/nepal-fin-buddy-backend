@@ -5,3 +5,4 @@ storage/
 .pytest_cache/
 .ruff_cache/
 *.pyc
+storage-test/
