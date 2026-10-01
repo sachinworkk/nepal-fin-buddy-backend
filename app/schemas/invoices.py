@@ -3,8 +3,9 @@ import uuid
 from decimal import Decimal
 from typing import Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 
+from app.cbms import messages
 from app.schemas.common import ORM, Amount
 
 
@@ -47,6 +48,11 @@ class SyncStatusOut(ORM):
     last_response_code: int | None
     last_error: str | None
     synced_at: dt.datetime | None
+
+    @computed_field
+    @property
+    def last_error_ne(self) -> str | None:
+        return messages.to_nepali(self.last_error)
 
 
 class InvoiceOut(ORM):
