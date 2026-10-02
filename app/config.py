@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     cbms_mode: str = "test"  # test | live
     cbms_mock_url: str = "http://localhost:8001"
     cbms_live_url: str = "https://cbapi.ird.gov.np"
+    cbms_backoff_base_seconds: float = 30.0
+    cbms_backoff_cap_seconds: float = 3600.0
+    worker_poll_seconds: float = 5.0
     storage_dir: str = "./storage"
 
     @property

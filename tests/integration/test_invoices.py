@@ -72,3 +72,11 @@ async def test_no_update_or_delete_and_isolation(client, auth, other_auth):
     assert (await client.get("/invoices", headers=other_auth)).json() == []
     # the same invoice number is fine for a different user
     assert (await client.post("/invoices", headers=other_auth, json=inv())).status_code == 201
+
+
+async def test_credit_note_uses_original_fiscal_year(client, auth):
+    await client.post("/invoices", headers=auth, json=inv(invoice_date_bs="2081.03.15"))  # Asar
+    r = await client.post("/invoices", headers=auth,
+                          json=credit_note(invoice_date_bs="2081.04.05"))  # Shrawan
+    assert r.status_code == 201, r.text
+    assert r.json()["fiscal_year"] == "2080.081"

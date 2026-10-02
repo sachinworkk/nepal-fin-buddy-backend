@@ -31,16 +31,17 @@ async def create_invoice(body: InvoiceIn, user: CurrentUser, session: SessionDep
     if body.is_return:
         cy, cm, cd = _parse_bs(body.credit_note_date_bs)
         data["credit_note_date_bs"] = dates.format_bs(cy, cm, cd)
-        ref = await session.scalar(select(IssuedInvoice.id).where(
+        ref_fy = await session.scalar(select(IssuedInvoice.fiscal_year).where(
             IssuedInvoice.user_id == user.id, IssuedInvoice.is_return.is_(False),
             IssuedInvoice.invoice_number == body.ref_invoice_number,
         ))
-        if ref is None:
+        if ref_fy is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                                 "Referenced invoice not found")
+    # CBMS expects a credit note's fiscal_year to be the original bill's.
     inv = IssuedInvoice(
         user_id=user.id, invoice_date_ad=ad,
-        fiscal_year=dates.fiscal_year_for(ad), **data,
+        fiscal_year=ref_fy if body.is_return else dates.fiscal_year_for(ad), **data,
     )
     session.add(inv)
     try:
