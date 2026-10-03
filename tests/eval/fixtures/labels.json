@@ -1,0 +1,37 @@
+{
+  "description": "Ground-truth labels for the extraction benchmark. One entry per bill image in fixtures/bills/. The image file lives in tests/eval/fixtures/bills/; labels are the hand-verified values.",
+  "bills": [
+    {
+      "id": "EXAMPLE-bhatbhateni-receipt",
+      "image": "EXAMPLE-bhatbhateni-receipt.jpg",
+      "source": "photo of a Bhatbhateni thermal receipt",
+      "expected": {
+        "vendor_name": "Bhatbhateni Supermarket",
+        "vendor_pan": "601234567",
+        "bill_number": "BB-88991",
+        "bill_date_bs": "2083-05-02",
+        "bill_date_ad": "2026-08-18",
+        "subtotal": "6895.00",
+        "taxable_amount": "6895.00",
+        "vat_amount": "896.35",
+        "total_amount": "7791.35"
+      }
+    },
+    {
+      "id": "EXAMPLE-worldlink-invoice",
+      "image": "EXAMPLE-worldlink-invoice.pdf",
+      "source": "WorldLink monthly invoice PDF",
+      "expected": {
+        "vendor_name": "WorldLink Communications",
+        "vendor_pan": "302987654",
+        "bill_number": "WL-2083-05-3301",
+        "bill_date_bs": "2083-05-01",
+        "bill_date_ad": "2026-08-17",
+        "subtotal": "3500.00",
+        "taxable_amount": "3500.00",
+        "vat_amount": "455.00",
+        "total_amount": "3955.00"
+      }
+    }
+  ]
+}
