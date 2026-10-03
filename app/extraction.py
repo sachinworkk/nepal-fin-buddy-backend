@@ -56,6 +56,9 @@ _KEYS = {
 }
 _ITEM_KEYS = {"description", "quantity", "unit_price", "amount"}
 _OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
+_NUMERIC_FIELDS = {"subtotal", "discount", "taxable_amount", "vat_amount", "total_amount",
+                   "quantity", "unit_price", "amount"}
+_NUM_RE = re.compile(r"-?\d[\d,]*\.?\d*")
 
 
 def _clean(value) -> str | None:
@@ -65,6 +68,19 @@ def _clean(value) -> str | None:
     return s or None
 
 
+def _clean_num(value) -> str | None:
+    """Coerce an amount/quantity to a decimal-safe string ('4x' -> '4', 'NPR 880' -> '880').
+
+    Returns None when nothing numeric survives — the DB columns are NUMERIC and
+    asyncpg rejects non-numeric strings outright.
+    """
+    s = _clean(value)
+    if s is None:
+        return None
+    m = _NUM_RE.search(s.replace(",", ""))
+    return m.group(0) if m else None
+
+
 def _clean_items(items) -> list[dict] | None:
     if not isinstance(items, list):
         return None
@@ -72,7 +88,11 @@ def _clean_items(items) -> list[dict] | None:
     for it in items:
         if not isinstance(it, dict):
             continue
-        cleaned = {k: _clean(v) for k, v in it.items() if k in _ITEM_KEYS}
+        cleaned = {}
+        for k, v in it.items():
+            if k not in _ITEM_KEYS:
+                continue
+            cleaned[k] = _clean_num(v) if k in _NUMERIC_FIELDS else _clean(v)
         if cleaned.get("description"):
             out.append(cleaned)
     return out or None
@@ -90,6 +110,8 @@ def parse_extraction(text: str) -> dict:
     if not isinstance(raw, dict):
         raise LlmError("extraction JSON was not an object")
     out: dict = {k: _clean(raw.get(k)) for k in _KEYS if k not in ("items", "ocr_text")}
+    for k in ("subtotal", "discount", "taxable_amount", "vat_amount", "total_amount"):
+        out[k] = _clean_num(out[k])
     out["items"] = _clean_items(raw.get("items"))
     out["ocr_text"] = _clean(raw.get("ocr_text"))
     return out

@@ -44,13 +44,10 @@ def run_extractor(image_path: Path, mime_type: str) -> dict:
 @pytest.fixture(scope="module")
 def labelled_bills():
     bills = load_labels()
-    real = []
-    for b in bills:
-        img = FIXTURES / "bills" / b["image"]
-        if img.exists():
-            real.append((b, img))
-        else:
-            pytest.skip(f"fixture image missing: {img.name}", allow_module_level=False)
+    real = [(b, FIXTURES / "bills" / b["image"])
+            for b in bills if (FIXTURES / "bills" / b["image"]).exists()]
+    if not real:
+        pytest.skip("no fixture images present", allow_module_level=True)
     return real
 
 

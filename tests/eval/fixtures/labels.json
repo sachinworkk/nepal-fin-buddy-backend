@@ -32,6 +32,44 @@
         "vat_amount": "455.00",
         "total_amount": "3955.00"
       }
+    },
+    {
+      "id": "EXAMPLE-qfx-cinema-ticket",
+      "image": "1.png",
+      "source": "tests/bills/1.png — QFX cinema e-ticket (Bhatbhateni Bhaktapur)",
+      "expected": {
+        "vendor_name": "QFX",
+        "bill_date_ad": "2024-09-20",
+        "subtotal": "880.00",
+        "vat_amount": "10.24",
+        "total_amount": "880.00"
+      }
+    },
+    {
+      "id": "EXAMPLE-csnepal-invoice",
+      "image": "2.png",
+      "source": "tests/bills/2.png — C.S. Nepal handwritten invoice",
+      "expected": {
+        "vendor_name": "C.S. Nepal Pvt. Ltd.",
+        "vendor_pan": "601176029",
+        "bill_number": "203",
+        "bill_date_bs": "2082.05.02",
+        "bill_date_ad": "2025-08-18",
+        "subtotal": "6708.00",
+        "total_amount": "6708.00"
+      }
+    },
+    {
+      "id": "EXAMPLE-restaurant-crumpled",
+      "image": "scdgwcrq00q91.jpg",
+      "source": "tests/bills/scdgwcrq00q91.jpg — crumpled restaurant receipt",
+      "expected": {
+        "bill_date_ad": "2022-09-25",
+        "subtotal": "1522.09",
+        "taxable_amount": "1522.09",
+        "vat_amount": "197.87",
+        "total_amount": "1720.00"
+      }
     }
   ]
 }
