@@ -28,13 +28,17 @@ def load_labels() -> list[dict]:
 
 
 def run_extractor(image_path: Path, mime_type: str) -> dict:
-    """Call the app's real bill extraction and return the extracted dict.
+    """Call the app's real bill extraction and return the extracted dict."""
+    import asyncio
 
-    TODO(step 5): replace with the real call, e.g.:
-        from app.extraction import extract_bill  # when it exists
-        return extract_bill(image_path.read_bytes(), mime_type)
-    """
-    raise NotImplementedError("extractor not built yet (step 5)")
+    from app.db import SessionLocal
+    from app.extraction import extract_bill
+
+    async def run() -> dict:
+        async with SessionLocal() as session:
+            return await extract_bill(session, None, image_path.read_bytes(), mime_type)
+
+    return asyncio.run(run())
 
 
 @pytest.fixture(scope="module")
@@ -58,12 +62,8 @@ def runs(labelled_bills):
     out = []
     for labels, img in labelled_bills:
         mime = "application/pdf" if img.suffix == ".pdf" else "image/jpeg"
-        try:
-            actual = run_extractor(img, mime)
-        except NotImplementedError:
-            pytest.skip("extractor not built yet (step 5)", allow_module_level=True)
         out.append({"bill_id": labels["id"],
-                    **score_extraction(labels["expected"], actual)})
+                    **score_extraction(labels["expected"], run_extractor(img, mime))})
     return out
 
 
