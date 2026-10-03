@@ -17,6 +17,7 @@ dependencies = [
     "pyjwt>=2.15.1",
     "pypdf>=6.19.0",
     "python-multipart>=0.0.32",
+    "sentence-transformers>=6.1.0",
     "sqlalchemy[asyncio]>=2.0",
     "structlog>=26.1.0",
     "tenacity>=9.1.4",
@@ -25,6 +26,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "deepeval>=4.2.8",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "ruff>=0.16.9",

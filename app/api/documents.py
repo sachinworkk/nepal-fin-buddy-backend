@@ -11,6 +11,7 @@ from sqlalchemy import select
 from app.api.deps import CurrentUser, SessionDep, get_owned
 from app.config import get_settings
 from app.models import Document
+from app.rag import index_document_safe
 from app.schemas.documents import DocumentDetail, DocumentOut, NoteIn
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -23,6 +24,8 @@ async def create_note(body: NoteIn, user: CurrentUser, session: SessionDep):
     doc = Document(user_id=user.id, kind="note", title=body.title, text_content=body.text)
     session.add(doc)
     await session.commit()
+    await session.refresh(doc)
+    await index_document_safe(doc)
     return doc
 
 
@@ -51,6 +54,8 @@ async def upload_document(file: UploadFile, user: CurrentUser, session: SessionD
     )
     session.add(doc)
     await session.commit()
+    await session.refresh(doc)
+    await index_document_safe(doc)
     return doc
 
 

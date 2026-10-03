@@ -7,7 +7,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, get_owned
-from app.models import Bill, BillItem, Expense
+from app.models import Bill, BillItem, Document, Expense, Extraction
+from app.rag import index_document_safe
 from app.schemas.bills import BillConfirm, BillOut, BillUpdate
 
 router = APIRouter(prefix="/bills", tags=["bills"])
@@ -66,9 +67,34 @@ async def confirm_bill(
         merchant=bill.vendor_name, expense_date_ad=body.bill_date_ad,
         expense_date_bs_raw=bill.bill_date_bs_raw, source="bill", bill_id=bill.id,
     ))
-    # TODO(step 6): index the bill's OCR text into documents/document_chunks for RAG.
     await session.commit()
+    await session.refresh(bill)
+    await _index_bill(session, bill)
     return bill
+
+
+async def _index_bill(session, bill: Bill) -> None:
+    """Create/refresh the bill's searchable document and index it for RAG."""
+    extraction_text = await session.scalar(
+        select(Extraction.ocr_text).where(Extraction.bill_id == bill.id)
+        .order_by(Extraction.created_at.desc()).limit(1)
+    )
+    if not extraction_text:
+        return
+    doc = await session.scalar(
+        select(Document).where(Document.bill_id == bill.id, Document.kind == "bill")
+    )
+    if doc is None:
+        doc = Document(
+            user_id=bill.user_id, kind="bill", bill_id=bill.id,
+            title=bill.vendor_name or f"Bill {bill.bill_number or bill.id}",
+            mime_type=bill.mime_type,
+        )
+    doc.text_content = extraction_text
+    session.add(doc)
+    await session.commit()
+    await session.refresh(doc)
+    await index_document_safe(doc)
 
 
 @router.delete("/{bill_id}", status_code=status.HTTP_204_NO_CONTENT)

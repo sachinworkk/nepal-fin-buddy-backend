@@ -18,7 +18,9 @@ class Settings(BaseSettings):
     extraction_model: str = "google/gemini-2.5-flash"
     chat_model: str = "google/gemini-2.5-flash"
 
-    embed_model: str = "Qwen/Qwen3-Embedding-0.6B"
+    # Must match document_chunks.embedding dim (Vector(1024)).
+    # Qwen/Qwen3-Embedding-0.6B has no OpenRouter endpoints; bge-m3 is 1024-dim.
+    embed_model: str = "baai/bge-m3"
     embed_dim: int = 1024
 
     cbms_mode: str = "test"  # test | live
@@ -28,6 +30,7 @@ class Settings(BaseSettings):
     cbms_backoff_cap_seconds: float = 3600.0
     worker_poll_seconds: float = 5.0
     storage_dir: str = "./storage"
+    eval_judge_model: str = "openai/gpt-oss-120b"
 
     @property
     def cbms_base_url(self) -> str:
