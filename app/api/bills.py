@@ -1,17 +1,99 @@
 import contextlib
 import datetime as dt
+import hashlib
+import json
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, status
+import structlog
+from fastapi import APIRouter, HTTPException, UploadFile, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, get_owned
+from app.config import get_settings
+from app.core.dates import parse_date_any
+from app.extraction import extract_bill
+from app.llm import LlmError
 from app.models import Bill, BillItem, Document, Expense, Extraction
 from app.rag import index_document_safe
 from app.schemas.bills import BillConfirm, BillOut, BillUpdate
 
+log = structlog.get_logger()
+
 router = APIRouter(prefix="/bills", tags=["bills"])
+MAX_BILL_UPLOAD = 10 * 1024 * 1024  # 10 MB
+_ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
+_EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp",
+        "application/pdf": ".pdf"}
+
+
+@router.post("/upload", response_model=BillOut, status_code=status.HTTP_201_CREATED)
+async def upload_bill(file: UploadFile, user: CurrentUser, session: SessionDep):
+    """Accept a bill photo/PDF, run LLM extraction, persist the Bill + Extraction.
+
+    Resubmission of the same file is idempotent: an identical sha256 for the user
+    returns the existing bill instead of extracting again.
+    """
+    if file.content_type not in _ALLOWED_MIME:
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "Only JPEG, PNG, WebP images or PDF bills",
+        )
+    data = await file.read(MAX_BILL_UPLOAD + 1)
+    if len(data) > MAX_BILL_UPLOAD:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "File too large (10 MB max)")
+
+    sha = hashlib.sha256(data).hexdigest()
+    existing = await session.scalar(
+        select(Bill).where(Bill.user_id == user.id, Bill.image_sha256 == sha)
+    )
+    if existing:
+        return existing
+
+    try:
+        fields = await extract_bill(session, user.id, data, file.content_type)
+    except LlmError as e:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Extraction failed: {e}") from None
+
+    # Normalise the printed date (BS or AD) to the AD date + raw BS string.
+    date_src = fields.get("bill_date_bs") or fields.get("bill_date_ad")
+    if date_src:
+        try:
+            bill_date_ad, bs_raw = parse_date_any(date_src)
+            fields["bill_date_ad"] = bill_date_ad
+            fields["bill_date_bs_raw"] = bs_raw
+        except ValueError:
+            log.warning("bill.date_unparseable", raw=date_src)
+
+    doc_id = uuid.uuid4()
+    ext = _EXT[file.content_type]
+    path = Path(get_settings().storage_dir) / str(user.id) / "bills" / f"{doc_id}{ext}"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+
+    items = fields.pop("items") or []
+    bill = Bill(
+        user_id=user.id, image_path=str(path), image_sha256=sha,
+        mime_type=file.content_type, status="extracted",
+        extraction_confidence=None,
+        **{k: v for k, v in fields.items() if k in Bill.__table__.columns.keys()},
+    )
+    bill.items = [BillItem(description=i["description"], quantity=i.get("quantity"),
+                           unit_price=i.get("unit_price"), amount=i.get("amount"))
+                  for i in items]
+    session.add(bill)
+    await session.commit()
+    await session.refresh(bill)
+
+    session.add(Extraction(
+        bill_id=bill.id, extractor="llm_vision", model=get_settings().extraction_model,
+        prompt_version="v1",
+        structured=json.loads(json.dumps(fields, default=str)),
+        raw_output=json.dumps(fields, default=str),
+        ocr_text=fields.get("ocr_text"),
+    ))
+    await session.commit()
+    return bill
 
 
 def _apply(bill: Bill, body: BillUpdate) -> None:
