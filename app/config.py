@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     embed_model: str = "baai/bge-m3"
     embed_dim: int = 1024
 
+    # Local cross-encoder reranker (in-process, CUDA when available). rerank_enabled=0
+    # disables it; rag.retrieve falls back to plain candidate ordering.
+    rerank_enabled: bool = True
+    rerank_max_candidates: int = 24
+
     cbms_mode: str = "test"  # test | live
     cbms_mock_url: str = "http://localhost:8001"
     cbms_live_url: str = "https://cbapi.ird.gov.np"

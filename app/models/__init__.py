@@ -17,7 +17,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -167,6 +167,8 @@ class DocumentChunk(Base):
     embedding = mapped_column(Vector(EMBED_DIM))
     embedding_model: Mapped[str] = mapped_column(String(200))
     meta: Mapped[dict | None] = mapped_column("metadata", JSONType)
+    # Maintained by trigger trg_document_chunks_tsv (alembic 0002); used for keyword retrieval.
+    content_tsv: Mapped[object] = mapped_column(TSVECTOR, nullable=True)
     __table_args__ = (
         Index(
             "ix_document_chunks_embedding", "embedding", postgresql_using="hnsw",
