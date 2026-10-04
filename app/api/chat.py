@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 
 from fastapi import APIRouter, HTTPException, status
@@ -6,7 +7,7 @@ from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.llm import LlmError, chat
-from app.models import ChatMessage, ChatSession
+from app.models import ChatMessage, ChatSession, Document
 from app.rag import retrieve
 from app.schemas.chat import (
     ChatMessageIn,
@@ -23,6 +24,9 @@ finances using their uploaded bills, documents and expenses.
 Rules:
 - Ground every factual claim in the provided context; if the context doesn't contain the \
 answer, say you don't have that information instead of guessing.
+- When you use information from a context chunk, cite it inline right after the claim like \
+[title | chunk N] using the chunk's exact title and number shown in the context. Only cite \
+chunks that actually appear in the provided context; never invent citations.
 - Amounts are in Nepali Rupees (Rs.). Format them like Rs. 1,234.56.
 - Dates may be in Bikram Sambat (BS) as well as Gregorian (AD); keep the original format \
 when quoting them.
@@ -84,8 +88,21 @@ async def send_message(session_id: uuid.UUID, body: ChatMessageIn,
     ))
     history.reverse()
 
+    if body.document_id is not None:
+        doc = await session.get(Document, body.document_id)
+        if doc is None or doc.user_id != user.id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
+
+    # Retrieval query: the current message plus the last user turn, so follow-up questions
+    # like "and how much was the VAT?" still resolve their referent.
+    retrieval_query = body.content
+    last_user = next((m.content for m in reversed(history) if m.role == "user"), None)
+    if last_user and last_user != body.content:
+        retrieval_query = f"{last_user}\n{body.content}"
+
     try:
-        chunks = await retrieve(session, user.id, body.content, top_k=6)
+        chunks = await retrieve(session, user.id, retrieval_query, top_k=6,
+                                document_id=body.document_id)
     except LlmError as e:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Embedding failed: {e}") from None
 
@@ -113,11 +130,24 @@ async def send_message(session_id: uuid.UUID, body: ChatMessageIn,
     if not answer:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "LLM returned an empty response")
 
-    citations = [Citation(
-        chunk_id=c.id, document_id=c.document_id,
-        title=c.meta.get("title", "document"), chunk_index=c.chunk_index,
-        snippet=c.content[:200],
-    ) for c in chunks]
+    by_ref = {(c.meta.get("title", "document"), c.chunk_index): c for c in chunks}
+    cited = set(re.findall(r"\[([^|\]]+)\s*\|\s*chunk\s*(\d+)\]", answer))
+    valid = [by_ref[(t, int(n))] for t, n in cited if (t, int(n)) in by_ref]
+    if valid:
+        # Keep only citations the model actually used, in retrieval order.
+        keep = set(id(c) for c in valid)
+        citations = [Citation(
+            chunk_id=c.id, document_id=c.document_id,
+            title=c.meta.get("title", "document"), chunk_index=c.chunk_index,
+            snippet=c.content[:200],
+        ) for c in chunks if id(c) in keep]
+    else:
+        # Model ignored the citation format; surface the retrieved context as before.
+        citations = [Citation(
+            chunk_id=c.id, document_id=c.document_id,
+            title=c.meta.get("title", "document"), chunk_index=c.chunk_index,
+            snippet=c.content[:200],
+        ) for c in chunks]
 
     ai_msg = ChatMessage(session_id=cs.id, role="assistant", content=answer,
                          citations=[json.loads(c.model_dump_json()) for c in citations])
