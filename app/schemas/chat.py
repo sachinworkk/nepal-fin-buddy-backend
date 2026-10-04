@@ -8,6 +8,7 @@ from app.schemas.common import ORM
 
 class ChatMessageIn(BaseModel):
     content: str = Field(min_length=1, max_length=4000)
+    document_id: uuid.UUID | None = None  # scope retrieval to one document
 
 
 class Citation(ORM):
