@@ -109,3 +109,15 @@ async def chat(session: AsyncSession, user_id, messages: list[dict]) -> str:
     })
     choice = (data.get("choices") or [{}])[0]
     return (choice.get("message") or {}).get("content") or ""
+
+async def chat_with_tools(session: AsyncSession, user_id, messages: list[dict],
+                          tools: list[dict] | None = None) -> dict:
+    """Chat completion that may request tool calls; returns the raw assistant message dict."""
+    s = get_settings()
+    body: dict = {"model": s.chat_model, "messages": messages}
+    if tools:
+        body["tools"] = tools
+        body["tool_choice"] = "auto"
+    data = await _post(session, "chat", user_id, "/chat/completions", body)
+    choice = (data.get("choices") or [{}])[0]
+    return choice.get("message") or {}
