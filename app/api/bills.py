@@ -7,16 +7,18 @@ from pathlib import Path
 
 import structlog
 from fastapi import APIRouter, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, get_owned
 from app.config import get_settings
 from app.core.dates import parse_date_any
-from app.extraction import extract_bill
+from app.extraction import bill_checks, extract_bill
 from app.llm import LlmError
 from app.models import Bill, BillItem, Document, Expense, Extraction
 from app.rag import index_document_safe
 from app.schemas.bills import BillConfirm, BillOut, BillUpdate
+from app.schemas.common import resolve_date
 
 log = structlog.get_logger()
 
@@ -71,11 +73,12 @@ async def upload_bill(file: UploadFile, user: CurrentUser, session: SessionDep):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
 
+    confidence, _flags = bill_checks(fields)
     items = fields.pop("items") or []
     bill = Bill(
         user_id=user.id, image_path=str(path), image_sha256=sha,
         mime_type=file.content_type, status="extracted",
-        extraction_confidence=None,
+        extraction_confidence=confidence,
         **{k: v for k, v in fields.items() if k in Bill.__table__.columns.keys()},
     )
     bill.items = [BillItem(description=i["description"], quantity=i.get("quantity"),
@@ -88,6 +91,7 @@ async def upload_bill(file: UploadFile, user: CurrentUser, session: SessionDep):
     session.add(Extraction(
         bill_id=bill.id, extractor="llm_vision", model=get_settings().extraction_model,
         prompt_version="v1",
+        confidence=confidence,
         structured=json.loads(json.dumps(fields, default=str)),
         raw_output=json.dumps(fields, default=str),
         ocr_text=fields.get("ocr_text"),
@@ -97,7 +101,7 @@ async def upload_bill(file: UploadFile, user: CurrentUser, session: SessionDep):
 
 
 def _apply(bill: Bill, body: BillUpdate) -> None:
-    data = body.model_dump(exclude_unset=True, exclude={"category"})
+    data = body.model_dump(exclude_unset=True, exclude={"category", "bill_date_bs"})
     items = data.pop("items", None)
     for k, v in data.items():
         setattr(bill, k, v)
@@ -125,6 +129,14 @@ async def get_bill(bill_id: uuid.UUID, user: CurrentUser, session: SessionDep):
     return await get_owned(session, Bill, bill_id, user)
 
 
+@router.get("/{bill_id}/image")
+async def get_bill_image(bill_id: uuid.UUID, user: CurrentUser, session: SessionDep):
+    bill = await get_owned(session, Bill, bill_id, user)
+    if not bill.image_path or not Path(bill.image_path).is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    return FileResponse(bill.image_path, media_type=bill.mime_type)
+
+
 @router.patch("/{bill_id}", response_model=BillOut)
 async def update_bill(bill_id: uuid.UUID, body: BillUpdate, user: CurrentUser, session: SessionDep):
     bill = await get_owned(session, Bill, bill_id, user)
@@ -142,11 +154,17 @@ async def confirm_bill(
     bill = await get_owned(session, Bill, bill_id, user)
     if bill.status != "extracted":
         raise HTTPException(status.HTTP_409_CONFLICT, "Bill is already confirmed")
+    date_ad, date_bs = resolve_date(body.bill_date_ad, body.bill_date_bs)
     _apply(bill, body)
+    bill.bill_date_ad = date_ad
+    if body.bill_date_bs is not None:
+        bill.bill_date_bs_raw = date_bs
+    elif bill.bill_date_bs_raw != date_bs:
+        bill.bill_date_bs_raw = None  # the stored BS string no longer matches the AD date
     bill.status = "confirmed"
     session.add(Expense(
         user_id=user.id, amount=body.total_amount, category=body.category.value,
-        merchant=bill.vendor_name, expense_date_ad=body.bill_date_ad,
+        merchant=bill.vendor_name, expense_date_ad=date_ad,
         expense_date_bs_raw=bill.bill_date_bs_raw, source="bill", bill_id=bill.id,
     ))
     await session.commit()
