@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 import re
 import uuid
@@ -6,7 +7,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
-from app.llm import LlmError, chat
+from app.assistant import run_agent, system_messages
+from app.llm import LlmError
 from app.models import ChatMessage, ChatSession, Document
 from app.rag import retrieve
 from app.schemas.chat import (
@@ -18,20 +20,6 @@ from app.schemas.chat import (
 )
 
 router = APIRouter(prefix="/chat", tags=["chat"])
-
-SYSTEM_PROMPT = """You are Nepal Fin Buddy's assistant. You help the user understand their \
-finances using their uploaded bills, documents and expenses.
-Rules:
-- Ground every factual claim in the provided context; if the context doesn't contain the \
-answer, say you don't have that information instead of guessing.
-- When you use information from a context chunk, cite it inline right after the claim like \
-[title | chunk N] using the chunk's exact title and number shown in the context. Only cite \
-chunks that actually appear in the provided context; never invent citations.
-- Amounts are in Nepali Rupees (Rs.). Format them like Rs. 1,234.56.
-- Dates may be in Bikram Sambat (BS) as well as Gregorian (AD); keep the original format \
-when quoting them.
-- VAT amounts on bills are 13% of the taxable amount in Nepal; do not "correct" the data.
-- Be concise."""
 
 
 async def _owned_session(session_dep, user, session_id: uuid.UUID) -> ChatSession:
@@ -63,7 +51,8 @@ async def list_sessions(user: CurrentUser, session: SessionDep):
 async def get_session(session_id: uuid.UUID, user: CurrentUser, session: SessionDep):
     cs = await _owned_session(session, user, session_id)
     msgs = list(await session.scalars(
-        select(ChatMessage).where(ChatMessage.session_id == cs.id)
+        select(ChatMessage)
+        .where(ChatMessage.session_id == cs.id, ChatMessage.role != "tool")
         .order_by(ChatMessage.created_at)
     ))
     out = ChatSessionOut.model_validate(cs).model_dump()
@@ -82,8 +71,10 @@ async def delete_session(session_id: uuid.UUID, user: CurrentUser, session: Sess
 async def send_message(session_id: uuid.UUID, body: ChatMessageIn,
                        user: CurrentUser, session: SessionDep):
     cs = await _owned_session(session, user, session_id)
+    user_id, cs_id = user.id, cs.id
     history = list(await session.scalars(
-        select(ChatMessage).where(ChatMessage.session_id == cs.id)
+        select(ChatMessage)
+        .where(ChatMessage.session_id == cs.id, ChatMessage.role.in_(("user", "assistant")))
         .order_by(ChatMessage.created_at.desc()).limit(10)
     ))
     history.reverse()
@@ -101,12 +92,12 @@ async def send_message(session_id: uuid.UUID, body: ChatMessageIn,
         retrieval_query = f"{last_user}\n{body.content}"
 
     try:
-        chunks = await retrieve(session, user.id, retrieval_query, top_k=6,
+        chunks = await retrieve(session, user_id, retrieval_query, top_k=6,
                                 document_id=body.document_id)
     except LlmError as e:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Embedding failed: {e}") from None
 
-    user_msg = ChatMessage(session_id=cs.id, role="user", content=body.content)
+    user_msg = ChatMessage(session_id=cs_id, role="user", content=body.content)
     session.add(user_msg)
     await session.commit()
 
@@ -114,7 +105,7 @@ async def send_message(session_id: uuid.UUID, body: ChatMessageIn,
         f"[{c.meta.get('title', 'document')} | chunk {c.chunk_index}]\n{c.content}"
         for c in chunks
     )
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages = system_messages(dt.date.today())
     messages += [{"role": m.role, "content": m.content} for m in history]
     if context:
         messages.append({
@@ -124,7 +115,8 @@ async def send_message(session_id: uuid.UUID, body: ChatMessageIn,
     messages.append({"role": "user", "content": body.content})
 
     try:
-        answer = await chat(session, user.id, messages)
+        answer, tool_audit = await run_agent(session, user_id, messages, chunks,
+                                             document_id=body.document_id)
     except LlmError as e:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"LLM call failed: {e}") from None
     if not answer:
@@ -141,6 +133,8 @@ async def send_message(session_id: uuid.UUID, body: ChatMessageIn,
             title=c.meta.get("title", "document"), chunk_index=c.chunk_index,
             snippet=c.content[:200],
         ) for c in chunks if id(c) in keep]
+    elif any(t["name"] != "search_documents" for t in tool_audit):
+        citations = []  # answered from SQL tool results; retrieved context wasn't the source
     else:
         # Model ignored the citation format; surface the retrieved context as before.
         citations = [Citation(
@@ -149,7 +143,10 @@ async def send_message(session_id: uuid.UUID, body: ChatMessageIn,
             snippet=c.content[:200],
         ) for c in chunks]
 
-    ai_msg = ChatMessage(session_id=cs.id, role="assistant", content=answer,
+    for t in tool_audit:
+        session.add(ChatMessage(session_id=cs_id, role="tool", content=t["result"],
+                                tool_name=t["name"], tool_args=t["args"]))
+    ai_msg = ChatMessage(session_id=cs_id, role="assistant", content=answer,
                          citations=[json.loads(c.model_dump_json()) for c in citations])
     session.add(ai_msg)
     await session.commit()
