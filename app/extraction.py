@@ -8,6 +8,8 @@ caller uses app.core.dates.parse_date_any to normalise.
 import base64
 import json
 import re
+from collections.abc import Mapping
+from decimal import Decimal, InvalidOperation
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -137,3 +139,59 @@ async def extract_bill(session: AsyncSession, user_id, data: bytes, mime_type: s
     except (KeyError, IndexError, TypeError):
         raise LlmError("extraction response missing message content") from None
     return parse_extraction(answer or "")
+
+
+# Penalty per flag; confidence = 1.0 minus the penalties of the flags raised.
+FLAG_PENALTIES = {
+    "missing_total": 0.30,
+    "total_mismatch": 0.25,
+    "items_sum_mismatch": 0.15,
+    "vat_rate_mismatch": 0.15,
+    "missing_date": 0.15,
+    "missing_pan": 0.05,
+}
+_TOLERANCE = Decimal("1")  # NPR; printed bills round
+_VAT_RATE = Decimal("0.13")
+
+
+def _dec(value) -> Decimal | None:
+    if value is None or value == "":
+        return None
+    try:
+        return Decimal(str(value))
+    except InvalidOperation:
+        return None
+
+
+def bill_checks(bill: Mapping) -> tuple[float, list[str]]:
+    """Consistency checks on bill values -> (confidence 0..1, flag codes).
+
+    Pure function of the values, so it is re-run on the edited bill and flags clear
+    as the user fixes fields. Keys read: vendor_pan, bill_date_ad, subtotal, discount,
+    taxable_amount, vat_amount, total_amount, items (dicts with 'amount').
+    """
+    subtotal, discount = _dec(bill.get("subtotal")), _dec(bill.get("discount"))
+    taxable, vat = _dec(bill.get("taxable_amount")), _dec(bill.get("vat_amount"))
+    total = _dec(bill.get("total_amount"))
+    flags: list[str] = []
+
+    if total is None:
+        flags.append("missing_total")
+    elif subtotal is not None and abs(subtotal - (discount or 0) + (vat or 0) - total) > _TOLERANCE:
+        flags.append("total_mismatch")
+
+    amounts = [_dec(i.get("amount")) for i in bill.get("items") or []]
+    if amounts and subtotal is not None and None not in amounts and (
+        abs(sum(amounts) - subtotal) > _TOLERANCE
+    ):
+        flags.append("items_sum_mismatch")
+
+    if taxable is not None and vat is not None and abs(taxable * _VAT_RATE - vat) > _TOLERANCE:
+        flags.append("vat_rate_mismatch")
+    if not bill.get("bill_date_ad"):
+        flags.append("missing_date")
+    if not bill.get("vendor_pan"):
+        flags.append("missing_pan")
+
+    confidence = max(0.0, 1.0 - sum(FLAG_PENALTIES[f] for f in flags))
+    return round(confidence, 2), flags

@@ -1,11 +1,13 @@
 import datetime as dt
 import uuid
 from decimal import Decimal
+from typing import Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from app.core.categories import Category
-from app.schemas.common import ORM, Amount
+from app.extraction import bill_checks
+from app.schemas.common import ORM, Amount, resolve_date
 
 
 class BillItemIn(BaseModel):
@@ -39,7 +41,12 @@ class BillUpdate(BillFields):
 class BillConfirm(BillUpdate):
     category: Category
     total_amount: Amount = Field(gt=0)
-    bill_date_ad: dt.date
+    bill_date_bs: str | None = None
+
+    @model_validator(mode="after")
+    def _date(self) -> Self:
+        resolve_date(self.bill_date_ad, self.bill_date_bs)  # exactly one, valid
+        return self
 
 
 class BillOut(BillFields, ORM):
@@ -48,3 +55,14 @@ class BillOut(BillFields, ORM):
     extraction_confidence: float | None
     created_at: dt.datetime
     items: list[BillItemOut]
+    image_path: str | None = Field(default=None, exclude=True)
+
+    @computed_field
+    @property
+    def has_image(self) -> bool:
+        return bool(self.image_path)
+
+    @computed_field
+    @property
+    def flags(self) -> list[str]:
+        return bill_checks(self.model_dump(exclude={"flags", "has_image"}))[1]
