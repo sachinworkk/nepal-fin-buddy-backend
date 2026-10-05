@@ -151,3 +151,11 @@ async def test_unknown_tool_and_bad_json_do_not_500(client, auth, tool_llm):
               {"name": "list_expenses", "arguments": "{not json"}])
     _, r = await _ask(client, auth)
     assert r.status_code == 200
+
+
+async def test_sql_answers_do_not_attach_unrelated_citations(client, auth, tool_llm):
+    await client.post("/documents", headers=auth, json={"title": "Note", "text": "rent note"})
+    await add(client, auth, "10.00")
+    tool_llm([{"name": "aggregate_expenses", "arguments": "{}"}])
+    _, r = await _ask(client, auth)
+    assert r.json()["citations"] == []

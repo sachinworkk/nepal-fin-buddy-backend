@@ -133,6 +133,8 @@ async def send_message(session_id: uuid.UUID, body: ChatMessageIn,
             title=c.meta.get("title", "document"), chunk_index=c.chunk_index,
             snippet=c.content[:200],
         ) for c in chunks if id(c) in keep]
+    elif any(t["name"] != "search_documents" for t in tool_audit):
+        citations = []  # answered from SQL tool results; retrieved context wasn't the source
     else:
         # Model ignored the citation format; surface the retrieved context as before.
         citations = [Citation(

@@ -13,7 +13,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.categories import Category
-from app.core.dates import ad_to_bs
+from app.core.dates import ad_to_bs, bs_to_ad
 from app.llm import LlmError, chat_with_tools
 from app.models import DocumentChunk, Expense
 from app.rag import retrieve
@@ -38,7 +38,8 @@ the answer, say you don't have that information instead of guessing.
 appear in the context or search results; never invent citations.
 - Amounts are in Nepali Rupees (Rs.). Format them like Rs. 1,234.56.
 - Dates may be in Bikram Sambat (BS) as well as Gregorian (AD); tool date arguments are \
-always AD (YYYY-MM-DD). Convert BS months/dates to AD yourself using today's date below.
+always AD (YYYY-MM-DD). Months mean Bikram Sambat months unless the user names a Gregorian \
+month: "this month" / "last month" use the exact AD ranges given below, not calendar months.
 - Reply in the language the user wrote in (English or Nepali).
 - VAT amounts on bills are 13% of the taxable amount in Nepal; do not "correct" the data.
 - Be concise."""
@@ -155,12 +156,27 @@ def _chunk_text(chunks: list[DocumentChunk]) -> str:
         for c in chunks)
 
 
+def bs_month_range(today: dt.date, offset: int = 0) -> tuple[dt.date, dt.date, str]:
+    """AD start/end (inclusive) and BS label of the BS month `offset` months from today's."""
+    b = ad_to_bs(today)
+    idx = b.year * 12 + b.month - 1 + offset
+    start = bs_to_ad(idx // 12, idx % 12 + 1, 1)
+    nxt = idx + 1
+    end = bs_to_ad(nxt // 12, nxt % 12 + 1, 1) - dt.timedelta(days=1)
+    return start, end, f"{idx // 12}-{idx % 12 + 1:02d}"
+
+
 def system_messages(today: dt.date) -> list[dict]:
     bs = ad_to_bs(today)
+    this_s, this_e, this_l = bs_month_range(today, 0)
+    last_s, last_e, last_l = bs_month_range(today, -1)
     return [{"role": "system", "content": SYSTEM_PROMPT},
             {"role": "system",
              "content": f"Today is {today.isoformat()} AD ({bs.year}-{bs.month:02d}-"
-                        f"{bs.day:02d} BS)."}]
+                        f"{bs.day:02d} BS).\n"
+                        f"This month (BS {this_l}): {this_s.isoformat()} to {this_e.isoformat()}.\n"
+                        f"Last month (BS {last_l}): {last_s.isoformat()} to "
+                        f"{last_e.isoformat()}."}]
 
 
 async def _run_tool(session: AsyncSession, user_id: uuid.UUID, name: str, raw_args: str,

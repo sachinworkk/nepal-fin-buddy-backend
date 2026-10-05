@@ -34,3 +34,17 @@ def test_tools_expose_no_user_id():
         "aggregate_expenses", "list_expenses", "search_documents"}
     for t in TOOLS:
         assert "user_id" not in t["function"]["parameters"]["properties"]
+
+
+def test_system_message_has_bs_month_ranges():
+    import datetime as dt
+
+    from app.assistant import bs_month_range, system_messages
+
+    today = dt.date(2026, 10, 5)  # Ashwin 2083
+    start, end, label = bs_month_range(today, -1)  # Bhadra
+    assert label == "2083-05"
+    assert start < end < dt.date(2026, 9, 20) and (end - start).days in (28, 29, 30, 31)
+    assert bs_month_range(today, 0)[0] == end + dt.timedelta(days=1)
+    text = system_messages(today)[1]["content"]
+    assert start.isoformat() in text and end.isoformat() in text
