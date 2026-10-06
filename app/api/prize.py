@@ -174,8 +174,12 @@ async def create_enrollment(
 
 
 @router.get("/enrollments", response_model=list[PrizeEnrollmentOut])
-async def list_enrollments(user: CurrentUser, session: SessionDep):
+async def list_enrollments(
+    user: CurrentUser, session: SessionDep, bill_id: uuid.UUID | None = None
+):
     q = select(PrizeEnrollment).where(PrizeEnrollment.user_id == user.id)
+    if bill_id is not None:
+        q = q.where(PrizeEnrollment.bill_id == bill_id)
     return list(await session.scalars(q.order_by(PrizeEnrollment.created_at.desc())))
 
 
