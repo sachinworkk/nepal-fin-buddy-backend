@@ -219,3 +219,49 @@ async def test_list_and_get_isolated_per_user(client, portal, auth, other_auth, 
     assert (await client.get(f"/prize/enrollments/{eid}", headers=other_auth)
             ).status_code == 404
     assert (await client.get("/prize/enrollments", headers=other_auth)).json() == []
+
+
+async def test_list_enrollments_filters_by_bill_id(client, portal, auth, db):
+    user = await _user_id(auth)
+    bill_a = await _confirmed_bill(db, user)
+    bill_b = await _confirmed_bill(db, user, bill_number="BILL-20")
+    await client.post("/prize/enrollments", headers=auth, json=body(str(bill_a.id)))
+
+    r = await client.get(f"/prize/enrollments?bill_id={bill_a.id}", headers=auth)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 1 and rows[0]["bill_id"] == str(bill_a.id)
+
+    assert (await client.get(f"/prize/enrollments?bill_id={bill_b.id}",
+                             headers=auth)).json() == []
+
+
+async def test_bill_prize_enrolled_flag(client, portal, auth, other_auth, db):
+    user = await _user_id(auth)
+    bill = await _confirmed_bill(db, user)
+    r = await client.get(f"/bills/{bill.id}", headers=auth)
+    assert r.status_code == 200
+    assert r.json()["prize_enrolled"] is False
+
+    assert (await client.post("/prize/enrollments", headers=auth,
+                              json=body(str(bill.id)))).status_code == 201
+
+    detail = (await client.get(f"/bills/{bill.id}", headers=auth)).json()
+    assert detail["prize_enrolled"] is True
+    listed = (await client.get("/bills", headers=auth)).json()
+    assert [b["prize_enrolled"] for b in listed if b["id"] == str(bill.id)] == [True]
+
+    # Failed attempts also count as enrolled — the bill must not be silently resubmitted.
+    failed = await _confirmed_bill(db, user, bill_number="BILL-21")
+    r = await client.post("/prize/enrollments", headers=auth, json=body(
+        str(failed.id), turnstile_token="FORCE_TURNSTILE_FAIL"))
+    assert r.status_code == 400
+    assert (await client.get(f"/bills/{failed.id}", headers=auth)
+            ).json()["prize_enrolled"] is True
+
+    # Other users never see this bill, and their own bills are not enrolled.
+    assert (await client.get(f"/bills/{bill.id}", headers=other_auth)).status_code == 404
+    other_bill = await _confirmed_bill(db, await _user_id(other_auth),
+                                       bill_number="BILL-22")
+    assert (await client.get(f"/bills/{other_bill.id}", headers=other_auth)
+            ).json()["prize_enrolled"] is False

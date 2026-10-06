@@ -15,7 +15,7 @@ from app.config import get_settings
 from app.core.dates import parse_date_any
 from app.extraction import bill_checks, extract_bill
 from app.llm import LlmError
-from app.models import Bill, BillItem, Document, Expense, Extraction
+from app.models import Bill, BillItem, Document, Expense, Extraction, PrizeEnrollment
 from app.rag import index_document_safe
 from app.schemas.bills import BillConfirm, BillOut, BillUpdate
 from app.schemas.common import resolve_date
@@ -50,6 +50,7 @@ async def upload_bill(file: UploadFile, user: CurrentUser, session: SessionDep):
         select(Bill).where(Bill.user_id == user.id, Bill.image_sha256 == sha)
     )
     if existing:
+        await _mark_enrolled(session, user.id, existing)
         return existing
 
     try:
@@ -109,6 +110,20 @@ def _apply(bill: Bill, body: BillUpdate) -> None:
         bill.items = [BillItem(**i) for i in items]
 
 
+async def _mark_enrolled(session, user_id: uuid.UUID, *bills: Bill) -> None:
+    """Set prize_enrolled on each bill that has any prize-lottery enrollment row."""
+    ids = [b.id for b in bills]
+    if not ids:
+        return
+    enrolled = set(await session.scalars(
+        select(PrizeEnrollment.bill_id).where(
+            PrizeEnrollment.user_id == user_id, PrizeEnrollment.bill_id.in_(ids)
+        ).distinct()
+    ))
+    for b in bills:
+        b.prize_enrolled = b.id in enrolled
+
+
 @router.get("", response_model=list[BillOut])
 async def list_bills(
     user: CurrentUser, session: SessionDep, status_: str | None = None,
@@ -121,12 +136,16 @@ async def list_bills(
         q = q.where(Bill.bill_date_ad >= date_from)
     if date_to:
         q = q.where(Bill.bill_date_ad <= date_to)
-    return list(await session.scalars(q.order_by(Bill.created_at.desc())))
+    bills = list(await session.scalars(q.order_by(Bill.created_at.desc())))
+    await _mark_enrolled(session, user.id, *bills)
+    return bills
 
 
 @router.get("/{bill_id}", response_model=BillOut)
 async def get_bill(bill_id: uuid.UUID, user: CurrentUser, session: SessionDep):
-    return await get_owned(session, Bill, bill_id, user)
+    bill = await get_owned(session, Bill, bill_id, user)
+    await _mark_enrolled(session, user.id, bill)
+    return bill
 
 
 @router.get("/{bill_id}/image")
@@ -144,6 +163,7 @@ async def update_bill(bill_id: uuid.UUID, body: BillUpdate, user: CurrentUser, s
         raise HTTPException(status.HTTP_409_CONFLICT, "Bill is already confirmed")
     _apply(bill, body)
     await session.commit()
+    await _mark_enrolled(session, user.id, bill)
     return bill
 
 
@@ -170,6 +190,7 @@ async def confirm_bill(
     await session.commit()
     await session.refresh(bill)
     await _index_bill(session, bill)
+    await _mark_enrolled(session, user.id, bill)
     return bill
 
 
