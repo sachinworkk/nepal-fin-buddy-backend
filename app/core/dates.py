@@ -55,11 +55,4 @@ def parse_date_any(text: str) -> tuple[dt.date, str | None]:
     return dt.date(y, mo, d), None
 
 
-def fiscal_year_bs(bs: nepali_datetime.date) -> str:
-    """CBMS fiscal year string, e.g. BS 2081-05-10 -> '2081.082'. Year starts Shrawan (month 4)."""
-    start = bs.year if bs.month >= 4 else bs.year - 1
-    return f"{start}.{str(start + 1)[-3:]}"
 
-
-def fiscal_year_for(d: dt.date) -> str:
-    return fiscal_year_bs(ad_to_bs(d))

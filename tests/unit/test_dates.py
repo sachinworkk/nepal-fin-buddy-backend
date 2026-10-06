@@ -37,16 +37,5 @@ def test_parse_date_any_bs_and_ad():
     assert dates.parse_date_any("2017-10-23") == (dt.date(2017, 10, 23), None)
 
 
-@pytest.mark.parametrize(
-    "bs,expected",
-    [((2081, 4, 1), "2081.082"), ((2082, 3, 32), "2081.082"), ((2081, 1, 1), "2080.081"),
-     ((2073, 12, 30), "2073.074"), ((2099, 5, 1), "2099.100")],
-)
-def test_fiscal_year(bs, expected):
-    import nepali_datetime
-
-    assert dates.fiscal_year_bs(nepali_datetime.date(*bs)) == expected
-
-
 def test_devanagari_digits():
     assert dates.to_ascii_digits("रू. १,२३४.५०") == "रू. 1,234.50"

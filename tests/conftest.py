@@ -5,7 +5,6 @@ import asyncpg
 import httpx
 import pytest
 import pytest_asyncio
-from cryptography.fernet import Fernet
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -16,7 +15,6 @@ _url = make_url(get_settings().database_url)
 TEST_DB = "finbuddy_test"
 TEST_URL = _url.set(database=TEST_DB).render_as_string(hide_password=False)
 os.environ["DATABASE_URL"] = TEST_URL
-os.environ["FIELD_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 os.environ["STORAGE_DIR"] = "./storage-test"
 get_settings.cache_clear()
 
