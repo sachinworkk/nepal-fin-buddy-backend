@@ -12,10 +12,10 @@ services:
       interval: 3s
       retries: 20
 
-  mock-cbms:
+  mock-prize:
     build: .
-    command: uvicorn mock_cbms.app:app --host 0.0.0.0 --port 8001
-    ports: ["8001:8001"]
+    command: uvicorn mock_prize.app:app --host 0.0.0.0 --port 8002
+    ports: ["8002:8002"]
 
   api:
     build: .
@@ -23,24 +23,13 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://finbuddy:finbuddy@db:5432/finbuddy
-      CBMS_MOCK_URL: http://mock-cbms:8001
+      PRIZE_MOCK_URL: http://mock-prize:8002/api/v1
       STORAGE_DIR: /data/storage
       HF_HOME: /data/hf
     ports: ["8000:8000"]
     volumes: [appdata:/data]
     depends_on:
       db: {condition: service_healthy}
-
-  worker:
-    build: .
-    command: python -m app.worker.sync
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://finbuddy:finbuddy@db:5432/finbuddy
-      CBMS_MOCK_URL: http://mock-cbms:8001
-    depends_on:
-      db: {condition: service_healthy}
-      mock-cbms: {condition: service_started}
 
 volumes:
   dbdata:

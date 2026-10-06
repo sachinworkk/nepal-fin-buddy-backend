@@ -5,6 +5,7 @@ from decimal import Decimal
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Date,
     DateTime,
     Float,
@@ -14,7 +15,6 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
-    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
@@ -50,20 +50,6 @@ class User(Base):
     full_name: Mapped[str | None] = mapped_column(String(200))
     preferred_language: Mapped[str] = mapped_column(String(2), default="en")
     created_at: Mapped[dt.datetime] = _now()
-
-
-class IrdCredential(Base):
-    __tablename__ = "ird_credentials"
-    id: Mapped[uuid.UUID] = _pk()
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True
-    )
-    username_enc: Mapped[str] = mapped_column(Text)
-    password_enc: Mapped[str] = mapped_column(Text)
-    seller_pan: Mapped[str] = mapped_column(String(20))
-    updated_at: Mapped[dt.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
 
 
 class Bill(Base):
@@ -178,60 +164,35 @@ class DocumentChunk(Base):
     )
 
 
-class IssuedInvoice(Base):
-    """A bill the user ISSUES (goes to CBMS). is_return=True rows are credit notes."""
+class PrizeEnrollment(Base):
+    """A cash bill a customer submitted to the IRD prize lottery (prize.ird.gov.np)."""
 
-    __tablename__ = "issued_invoices"
+    __tablename__ = "prize_enrollments"
     id: Mapped[uuid.UUID] = _pk()
     user_id: Mapped[uuid.UUID] = _fk("users")
-    is_return: Mapped[bool] = mapped_column(default=False)
-    invoice_number: Mapped[str] = mapped_column(String(50))
-    invoice_date_bs: Mapped[str] = mapped_column(String(10))
-    invoice_date_ad: Mapped[dt.date] = mapped_column(Date)
-    fiscal_year: Mapped[str] = mapped_column(String(10))
-    buyer_name: Mapped[str] = mapped_column(String(300))
-    buyer_pan: Mapped[str | None] = mapped_column(String(20))
-    total_sales: Mapped[Decimal] = mapped_column(Money, default=0)
-    taxable_sales_vat: Mapped[Decimal] = mapped_column(Money, default=0)
-    vat: Mapped[Decimal] = mapped_column(Money, default=0)
-    excisable_amount: Mapped[Decimal] = mapped_column(Money, default=0)
-    excise: Mapped[Decimal] = mapped_column(Money, default=0)
-    taxable_sales_hst: Mapped[Decimal] = mapped_column(Money, default=0)
-    hst: Mapped[Decimal] = mapped_column(Money, default=0)
-    amount_for_esf: Mapped[Decimal] = mapped_column(Money, default=0)
-    esf: Mapped[Decimal] = mapped_column(Money, default=0)
-    export_sales: Mapped[Decimal] = mapped_column(Money, default=0)
-    tax_exempted_sales: Mapped[Decimal] = mapped_column(Money, default=0)
-    # credit-note only
-    ref_invoice_number: Mapped[str | None] = mapped_column(String(50))
-    credit_note_number: Mapped[str | None] = mapped_column(String(50))
-    credit_note_date_bs: Mapped[str | None] = mapped_column(String(10))
-    reason_for_return: Mapped[str | None] = mapped_column(String(300))
+    bill_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("bills.id", ondelete="SET NULL")
+    )
+    seller_pan_no: Mapped[str] = mapped_column(String(9))
+    bill_number: Mapped[str] = mapped_column(String(40))
+    bill_date: Mapped[dt.date] = mapped_column(Date)
+    billed_total_amount: Mapped[Decimal] = mapped_column(Money)
+    payment_method: Mapped[str] = mapped_column(String(10), default="Cash")
+    name: Mapped[str] = mapped_column(String(120))
+    address: Mapped[str] = mapped_column(String(200))
+    mobile_number: Mapped[str] = mapped_column(String(10))
+    company_website: Mapped[str | None] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(12), default="submitted")  # submitted|failed
+    prize_coupon_number: Mapped[str | None] = mapped_column(String(12))
+    verification_id: Mapped[str | None] = mapped_column(String(30))
+    duplicate: Mapped[bool] = mapped_column(default=False)
+    ird_response: Mapped[dict | None] = mapped_column(JSONType)
+    last_error: Mapped[str | None] = mapped_column(String(500))
+    form_started_at: Mapped[int] = mapped_column(BigInteger)
     created_at: Mapped[dt.datetime] = _now()
     __table_args__ = (
-        UniqueConstraint("user_id", "fiscal_year", "invoice_number", "is_return",
-                         name="uq_issued_invoice_number"),
-    )
-
-
-class CbmsSyncQueue(Base):
-    __tablename__ = "cbms_sync_queue"
-    id: Mapped[uuid.UUID] = _pk()
-    issued_invoice_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("issued_invoices.id", ondelete="CASCADE"), unique=True
-    )
-    endpoint: Mapped[str] = mapped_column(String(10), default="bill")  # bill|billreturn
-    status: Mapped[str] = mapped_column(String(12), default="pending", index=True)
-    attempts: Mapped[int] = mapped_column(Integer, default=0)
-    max_attempts: Mapped[int] = mapped_column(Integer, default=6)
-    next_attempt_at: Mapped[dt.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), index=True
-    )
-    last_response_code: Mapped[int | None] = mapped_column(Integer)
-    last_error: Mapped[str | None] = mapped_column(String(500))
-    synced_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
-    updated_at: Mapped[dt.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        Index("ix_prize_enrollments_user_bill", "user_id", "seller_pan_no",
+              "bill_number", "bill_date"),
     )
 
 

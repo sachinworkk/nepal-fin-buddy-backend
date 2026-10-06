@@ -10,7 +10,6 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://finbuddy:finbuddy@localhost:5433/finbuddy"
     jwt_secret: str = "dev-secret"
     jwt_expire_minutes: int = 60 * 24
-    field_encryption_key: str = ""
     cors_origins: str = "http://localhost:5173"
 
     openrouter_api_key: str = ""
@@ -28,22 +27,40 @@ class Settings(BaseSettings):
     rerank_enabled: bool = True
     rerank_max_candidates: int = 24
 
-    cbms_mode: str = "test"  # test | live
-    cbms_mock_url: str = "http://localhost:8001"
-    cbms_live_url: str = "https://cbapi.ird.gov.np"
-    cbms_backoff_base_seconds: float = 30.0
-    cbms_backoff_cap_seconds: float = 3600.0
-    worker_poll_seconds: float = 5.0
+    # prize.ird.gov.np ("test" uses the local mock; "live" is refused unless APP_ENV=production)
+    prize_mode: str = "test"
+    prize_mock_url: str = "http://localhost:8002/api/v1"
+    prize_live_url: str = "https://prize.ird.gov.np/api/v1"
+    # Cloudflare Turnstile widget rendered by the frontend. Defaults are Cloudflare's
+    # published test keys, which pass on any domain (e.g. localhost); set real keys
+    # from the Cloudflare dashboard before PRIZE_MODE=live.
+    prize_turnstile_sitekey: str = "1x00000000000000000000AA"
+    prize_turnstile_secret_key: str = "1x0000000000000000000000000000000AA"
+    prize_min_form_age_seconds: float = 5.0
+    prize_max_form_age_seconds: float = 86400.0
+    # Minimum seconds between two submissions by the same user; IRD throttles bursts
+    # (they surface as misleading "form expired" errors).
+    prize_user_submit_interval_seconds: float = 8.0
+
     storage_dir: str = "./storage"
     eval_judge_model: str = "openai/gpt-oss-120b"
 
     @property
-    def cbms_base_url(self) -> str:
-        if self.cbms_mode == "live":
+    def prize_turnstile_keys_are_test(self) -> bool:
+        """True for Cloudflare's published test keys (1x/2x/3x prefixes)."""
+        return self.prize_turnstile_sitekey.startswith(("1x", "2x", "3x")) or (
+            self.prize_turnstile_secret_key.startswith(("1x", "2x", "3x"))
+        )
+
+    @property
+    def prize_base_url(self) -> str:
+        if self.prize_mode == "live":
             if self.app_env != "production":
-                raise RuntimeError("CBMS_MODE=live is refused unless APP_ENV=production")
-            return self.cbms_live_url
-        return self.cbms_mock_url
+                raise RuntimeError("PRIZE_MODE=live is refused unless APP_ENV=production")
+            if self.prize_turnstile_keys_are_test:
+                raise RuntimeError("PRIZE_MODE=live requires real (non-test) Turnstile keys")
+            return self.prize_live_url
+        return self.prize_mock_url
 
 
 @lru_cache

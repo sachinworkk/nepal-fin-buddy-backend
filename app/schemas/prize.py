@@ -1,0 +1,46 @@
+import datetime as dt
+import uuid
+from decimal import Decimal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class PrizeConfigOut(BaseModel):
+    turnstile_sitekey: str
+    payment_methods: list[str]
+
+
+class PrizeEnrollmentIn(BaseModel):
+    """Bill details are prefilled server-side from the confirmed bill `bill_id`."""
+
+    bill_id: uuid.UUID
+    payment_method: str = "Cash"
+    name: str = Field(min_length=2, max_length=120)
+    address: str = Field(min_length=1, max_length=200)
+    mobile_number: str = Field(min_length=10, max_length=10)
+    company_website: str | None = Field(default=None, max_length=200)
+    # Frontend solves Cloudflare Turnstile and records when the form was opened.
+    turnstile_token: str = Field(min_length=1, max_length=2048)
+    form_started_at: int = Field(description="Epoch ms when the frontend form was opened")
+
+
+class PrizeEnrollmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    bill_id: uuid.UUID | None
+    seller_pan_no: str
+    bill_number: str
+    bill_date: dt.date
+    billed_total_amount: Decimal
+    payment_method: str
+    name: str
+    address: str
+    mobile_number: str
+    company_website: str | None
+    status: str
+    prize_coupon_number: str | None
+    verification_id: str | None
+    duplicate: bool
+    last_error: str | None
+    created_at: dt.datetime

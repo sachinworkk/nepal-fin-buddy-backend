@@ -2,10 +2,9 @@ import datetime as dt
 import uuid
 
 import jwt
-import pytest
 
 from app.config import get_settings
-from app.core import crypto, security
+from app.core import security
 
 
 def test_password_hash_roundtrip():
@@ -28,13 +27,3 @@ def test_jwt_expired_and_garbage():
     )
     assert security.decode_access_token(expired) is None
     assert security.decode_access_token("not.a.token") is None
-
-
-def test_fernet_roundtrip():
-    assert crypto.decrypt(crypto.encrypt("ird-user")) == "ird-user"
-
-
-def test_fernet_requires_key(monkeypatch):
-    monkeypatch.setattr(get_settings(), "field_encryption_key", "")
-    with pytest.raises(RuntimeError, match="FIELD_ENCRYPTION_KEY"):
-        crypto.encrypt("x")
