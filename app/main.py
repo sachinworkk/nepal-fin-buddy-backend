@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, bills, chat, dates, documents, expenses, prize, stats
+from app.api import auth, bills, chat, dates, documents, expenses, lookups, prize, stats
 from app.config import get_settings
 
 app = FastAPI(title="Nepal Fin Buddy")
@@ -12,7 +12,7 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Total-Count"],
 )
-for r in (auth, expenses, bills, documents, stats, prize, chat, dates):
+for r in (auth, expenses, bills, documents, stats, prize, chat, dates, lookups):
     app.include_router(r.router)
 
 

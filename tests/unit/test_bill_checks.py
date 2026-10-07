@@ -51,3 +51,15 @@ def test_empty_bill_confidence_floors_at_zero_or_above():
     conf, flags = bill_checks({})
     assert set(flags) == {"missing_total", "missing_date", "missing_pan"}
     assert 0 <= conf < 0.6
+
+
+def test_parse_extraction_maps_payment_method():
+    import json
+
+    from app.extraction import parse_extraction
+
+    def pm(v):
+        return parse_extraction(json.dumps({"payment_method": v}))["payment_method"]
+
+    assert pm("Cash") == "cash" and pm("eSewa") == "qr" and pm("Visa") == "card"
+    assert pm("barter") is None and pm(None) is None

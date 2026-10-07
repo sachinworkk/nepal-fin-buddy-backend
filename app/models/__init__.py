@@ -52,6 +52,27 @@ class User(Base):
     created_at: Mapped[dt.datetime] = _now()
 
 
+class Category(Base):
+    """Expense category lookup; the slug is the natural key the API already exposes."""
+
+    __tablename__ = "categories"
+    slug: Mapped[str] = mapped_column(String(30), primary_key=True)
+    label_en: Mapped[str] = mapped_column(String(50))
+    label_ne: Mapped[str] = mapped_column(String(50))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class PaymentMethod(Base):
+    """Payment method lookup; `ird_code` is the value the IRD prize portal expects, if any."""
+
+    __tablename__ = "payment_methods"
+    code: Mapped[str] = mapped_column(String(10), primary_key=True)
+    label_en: Mapped[str] = mapped_column(String(50))
+    label_ne: Mapped[str] = mapped_column(String(50))
+    ird_code: Mapped[str | None] = mapped_column(String(10))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class Bill(Base):
     """A bill the user RECEIVED (snap-to-ledger)."""
 
@@ -70,6 +91,9 @@ class Bill(Base):
     total_amount: Mapped[Decimal | None] = mapped_column(Money)
     image_path: Mapped[str | None] = mapped_column(String(500))
     image_sha256: Mapped[str | None] = mapped_column(String(64), index=True)
+    payment_method: Mapped[str | None] = mapped_column(
+        String(10), ForeignKey("payment_methods.code")
+    )
     mime_type: Mapped[str | None] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(20), default="extracted")  # extracted|confirmed
     extraction_confidence: Mapped[float | None] = mapped_column(Float)
@@ -115,17 +139,26 @@ class Expense(Base):
     id: Mapped[uuid.UUID] = _pk()
     user_id: Mapped[uuid.UUID] = _fk("users")
     amount: Mapped[Decimal] = mapped_column(Money)
-    category: Mapped[str] = mapped_column(String(30), index=True)
+    category: Mapped[str] = mapped_column(
+        String(30), ForeignKey("categories.slug"), index=True
+    )
     merchant: Mapped[str | None] = mapped_column(String(300))
     note: Mapped[str | None] = mapped_column(Text)
     expense_date_ad: Mapped[dt.date] = mapped_column(Date, index=True)
     expense_date_bs_raw: Mapped[str | None] = mapped_column(String(20))
-    payment_method: Mapped[str | None] = mapped_column(String(30))
+    payment_method: Mapped[str | None] = mapped_column(
+        String(10), ForeignKey("payment_methods.code")
+    )
     source: Mapped[str] = mapped_column(String(10), default="manual")  # manual|chat|bill
     bill_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("bills.id", ondelete="SET NULL")
     )
     created_at: Mapped[dt.datetime] = _now()
+    # A bill produces at most one expense (the confirm step); manual expenses have no bill.
+    __table_args__ = (
+        Index("uq_expenses_bill_id", "bill_id", unique=True,
+              postgresql_where=bill_id.is_not(None)),
+    )
 
 
 class Document(Base):

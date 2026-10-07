@@ -67,7 +67,8 @@ async def client(app_engine):
     async with app_engine.begin() as conn:
         tables = (await conn.execute(text(
             "SELECT string_agg(quote_ident(tablename), ',') FROM pg_tables "
-            "WHERE schemaname='public' AND tablename <> 'alembic_version'"
+            "WHERE schemaname='public' "
+            "AND tablename NOT IN ('alembic_version', 'categories', 'payment_methods')"
         ))).scalar()
         await conn.execute(text(f"TRUNCATE {tables} CASCADE"))
 

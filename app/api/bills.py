@@ -91,7 +91,7 @@ async def upload_bill(file: UploadFile, user: CurrentUser, session: SessionDep):
 
     session.add(Extraction(
         bill_id=bill.id, extractor="llm_vision", model=get_settings().extraction_model,
-        prompt_version="v1",
+        prompt_version="v2",
         confidence=confidence,
         structured=json.loads(json.dumps(fields, default=str)),
         raw_output=json.dumps(fields, default=str),
@@ -184,7 +184,8 @@ async def confirm_bill(
     bill.status = "confirmed"
     session.add(Expense(
         user_id=user.id, amount=body.total_amount, category=body.category.value,
-        merchant=bill.vendor_name, expense_date_ad=date_ad,
+        merchant=bill.vendor_name, payment_method=bill.payment_method,
+        expense_date_ad=date_ad,
         expense_date_bs_raw=bill.bill_date_bs_raw, source="bill", bill_id=bill.id,
     ))
     await session.commit()

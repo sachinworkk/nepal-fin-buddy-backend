@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import llm
 from app.config import get_settings
+from app.core.payment_methods import PaymentMethod
 from app.llm import LlmError
 
 log = structlog.get_logger()
@@ -38,6 +39,8 @@ currency symbols
   "taxable_amount": string|null,
   "vat_amount": string|null,
   "total_amount": string|null,
+  "payment_method": "cash"|"card"|"qr"|"cheque"|null,  // how the bill was paid, \
+only if printed (e.g. "Cash", "Visa", "eSewa"); else null
   "items": [ { "description": string, "quantity": string|null,
                "unit_price": string|null, "amount": string|null } ],
   "ocr_text": string                  // your full plain-text transcription of \
@@ -54,7 +57,7 @@ decimals.
 _KEYS = {
     "vendor_name", "vendor_pan", "bill_number", "bill_date_bs", "bill_date_ad",
     "subtotal", "discount", "taxable_amount", "vat_amount", "total_amount",
-    "items", "ocr_text",
+    "payment_method", "items", "ocr_text",
 }
 _ITEM_KEYS = {"description", "quantity", "unit_price", "amount"}
 _OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
@@ -81,6 +84,19 @@ def _clean_num(value) -> str | None:
         return None
     m = _NUM_RE.search(s.replace(",", ""))
     return m.group(0) if m else None
+
+
+_PAYMENT_ALIASES = {
+    "check": "cheque", "esewa": "qr", "khalti": "qr", "fonepay": "qr", "wallet": "qr",
+    "credit card": "card", "debit card": "card", "visa": "card", "mastercard": "card",
+}
+
+
+def _clean_payment(value) -> str | None:
+    """Map the printed payment method onto a PaymentMethod value; None when unrecognised."""
+    s = (_clean(value) or "").lower()
+    s = _PAYMENT_ALIASES.get(s, s)
+    return s if s in {m.value for m in PaymentMethod} else None
 
 
 def _clean_items(items) -> list[dict] | None:
@@ -114,6 +130,7 @@ def parse_extraction(text: str) -> dict:
     out: dict = {k: _clean(raw.get(k)) for k in _KEYS if k not in ("items", "ocr_text")}
     for k in ("subtotal", "discount", "taxable_amount", "vat_amount", "total_amount"):
         out[k] = _clean_num(out[k])
+    out["payment_method"] = _clean_payment(out["payment_method"])
     out["items"] = _clean_items(raw.get("items"))
     out["ocr_text"] = _clean(raw.get("ocr_text"))
     return out

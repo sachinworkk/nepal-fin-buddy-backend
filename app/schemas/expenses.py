@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.core import dates
 from app.core.categories import Category
+from app.core.payment_methods import PaymentMethod
 from app.schemas.common import ORM, Amount, resolve_date
 
 
@@ -14,7 +15,7 @@ class ExpenseIn(BaseModel):
     category: Category
     merchant: str | None = Field(default=None, max_length=300)
     note: str | None = None
-    payment_method: str | None = Field(default=None, max_length=30)
+    payment_method: PaymentMethod | None = None
     expense_date: dt.date | None = None
     expense_date_bs: str | None = None
 
@@ -29,7 +30,7 @@ class ExpenseUpdate(BaseModel):
     category: Category | None = None
     merchant: str | None = Field(default=None, max_length=300)
     note: str | None = None
-    payment_method: str | None = Field(default=None, max_length=30)
+    payment_method: PaymentMethod | None = None
     expense_date: dt.date | None = None
     expense_date_bs: str | None = None
 

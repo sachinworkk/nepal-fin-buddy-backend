@@ -6,6 +6,7 @@ from typing import Self
 from pydantic import BaseModel, Field, computed_field, model_validator
 
 from app.core.categories import Category
+from app.core.payment_methods import PaymentMethod
 from app.extraction import bill_checks
 from app.schemas.common import ORM, Amount, resolve_date
 
@@ -32,6 +33,7 @@ class BillFields(BaseModel):
     taxable_amount: Amount | None = None
     vat_amount: Amount | None = None
     total_amount: Amount | None = None
+    payment_method: PaymentMethod | None = None
 
 
 class BillUpdate(BillFields):
