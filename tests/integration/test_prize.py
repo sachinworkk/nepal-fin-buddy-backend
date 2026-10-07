@@ -348,7 +348,28 @@ async def test_mark_submitted_flow(client, portal, auth, other_auth, db):
                               json=handoff_body(str(bill.id)))).status_code == 409
     assert (await client.get("/prize/eligible", headers=auth)).json() == []
     assert (await client.patch(f"/prize/enrollments/{eid}", headers=auth,
+                               json={"status": "dismissed"})).status_code == 409
+    assert (await client.patch(f"/prize/enrollments/{eid}", headers=auth,
                                json={"status": "failed"})).status_code == 422
+
+
+async def test_dismiss_handoff(client, portal, auth, other_auth, db):
+    bill = await _confirmed_bill(db, await _user_id(auth))
+    eid = (await client.post("/prize/enrollments/handoff", headers=auth,
+                             json=handoff_body(str(bill.id)))).json()["enrollment_id"]
+
+    assert (await client.patch(f"/prize/enrollments/{eid}", headers=other_auth,
+                               json={"status": "dismissed"})).status_code == 404
+    r = await client.patch(f"/prize/enrollments/{eid}", headers=auth, json={"status": "dismissed"})
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "dismissed"
+    assert r.json()["prize_coupon_number"] is None
+
+    # Dismissed: can't be re-closed, and the bill is free to hand off again as a new entry.
+    assert (await client.patch(f"/prize/enrollments/{eid}", headers=auth,
+                               json={"status": "submitted"})).status_code == 409
+    r = await client.post("/prize/enrollments/handoff", headers=auth, json=handoff_body(str(bill.id)))
+    assert r.status_code == 200 and r.json()["enrollment_id"] != eid
 
 
 async def test_live_mode_direct_submit_refused(client, portal, auth, db, monkeypatch):

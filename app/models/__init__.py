@@ -216,7 +216,7 @@ class PrizeEnrollment(Base):
     address: Mapped[str] = mapped_column(String(200))
     mobile_number: Mapped[str] = mapped_column(String(10))
     company_website: Mapped[str | None] = mapped_column(String(200))
-    # submitted|failed|handed_off (prefilled for the user to submit on the IRD portal)
+    # submitted|failed|handed_off (prefilled for the user to submit on the IRD portal)|dismissed
     status: Mapped[str] = mapped_column(String(12), default="submitted")
     prize_coupon_number: Mapped[str | None] = mapped_column(String(12))
     verification_id: Mapped[str | None] = mapped_column(String(30))

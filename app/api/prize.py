@@ -20,9 +20,9 @@ from app.schemas.prize import (
     PrizeEligibleOut,
     PrizeEnrollmentIn,
     PrizeEnrollmentOut,
+    PrizeEnrollmentPatchIn,
     PrizeHandoffIn,
     PrizeHandoffOut,
-    PrizeMarkSubmittedIn,
 )
 
 log = structlog.get_logger()
@@ -284,17 +284,18 @@ async def create_handoff(
 
 
 @router.patch("/enrollments/{enrollment_id}", response_model=PrizeEnrollmentOut)
-async def mark_submitted(
-    enrollment_id: uuid.UUID, body: PrizeMarkSubmittedIn, user: CurrentUser, session: SessionDep,
+async def update_handoff(
+    enrollment_id: uuid.UUID, body: PrizeEnrollmentPatchIn, user: CurrentUser, session: SessionDep,
 ):
-    """The user finished the portal form; optionally record the coupon number they got."""
+    """Close out a hand-off: mark it submitted (optionally with the coupon number) or dismiss it."""
     row = await get_owned(session, PrizeEnrollment, enrollment_id, user)
     if row.status != "handed_off":
         raise HTTPException(
-            status.HTTP_409_CONFLICT, "Only a handed-off bill can be marked submitted"
+            status.HTTP_409_CONFLICT, "Only a handed-off bill can be marked submitted or dismissed"
         )
-    row.status = "submitted"
-    row.prize_coupon_number = body.prize_coupon_number
+    row.status = body.status
+    if body.status == "submitted":
+        row.prize_coupon_number = body.prize_coupon_number
     await session.commit()
     await session.refresh(row)
     return row
