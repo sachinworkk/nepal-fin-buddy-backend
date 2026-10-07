@@ -1,6 +1,5 @@
 import contextlib
 import datetime as dt
-import hashlib
 import json
 import uuid
 from pathlib import Path
@@ -32,11 +31,7 @@ _EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp",
 
 @router.post("/upload", response_model=BillOut, status_code=status.HTTP_201_CREATED)
 async def upload_bill(file: UploadFile, user: CurrentUser, session: SessionDep):
-    """Accept a bill photo/PDF, run LLM extraction, persist the Bill + Extraction.
-
-    Resubmission of the same file is idempotent: an identical sha256 for the user
-    returns the existing bill instead of extracting again.
-    """
+    """Accept a bill photo/PDF, run LLM extraction, persist the Bill + Extraction."""
     if file.content_type not in _ALLOWED_MIME:
         raise HTTPException(
             status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -45,14 +40,6 @@ async def upload_bill(file: UploadFile, user: CurrentUser, session: SessionDep):
     data = await file.read(MAX_BILL_UPLOAD + 1)
     if len(data) > MAX_BILL_UPLOAD:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "File too large (10 MB max)")
-
-    sha = hashlib.sha256(data).hexdigest()
-    existing = await session.scalar(
-        select(Bill).where(Bill.user_id == user.id, Bill.image_sha256 == sha)
-    )
-    if existing:
-        await _mark_enrolled(session, user.id, existing)
-        return existing
 
     try:
         fields = await extract_bill(session, user.id, data, file.content_type)
@@ -81,7 +68,7 @@ async def upload_bill(file: UploadFile, user: CurrentUser, session: SessionDep):
         span.set(flags=",".join(sorted(str(f) for f in flags)))
     items = fields.pop("items") or []
     bill = Bill(
-        user_id=user.id, image_path=str(path), image_sha256=sha,
+        user_id=user.id, image_path=str(path),
         mime_type=file.content_type, status="extracted",
         extraction_confidence=confidence,
         **{k: v for k, v in fields.items() if k in Bill.__table__.columns.keys()},
