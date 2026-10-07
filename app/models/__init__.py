@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -273,7 +274,20 @@ class ChatMessage(Base):
     tool_name: Mapped[str | None] = mapped_column(String(50))
     tool_args: Mapped[dict | None] = mapped_column(JSONType)
     citations: Mapped[list | None] = mapped_column(JSONType)
+    # Edits/deletes the agent paused on, awaiting the user's confirm/cancel.
+    pending_actions: Mapped[list | None] = mapped_column(JSONType)
     llm_call_log_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("llm_call_logs.id", ondelete="SET NULL")
     )
     created_at: Mapped[dt.datetime] = _now()
+
+
+class AgentStorage(Base):
+    """Key/value blobs for the Strands agent's session snapshots (one chat session each)."""
+
+    __tablename__ = "agent_storage"
+    key: Mapped[str] = mapped_column(String(500), primary_key=True)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

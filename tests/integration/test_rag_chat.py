@@ -4,7 +4,9 @@
 import pytest
 
 from app import llm
+from app.agent import model as agent_model
 from app.models import DocumentChunk
+from tests.integration.fake_agent import FakeAgentModel
 
 
 def _fake_vec(seed: int) -> list[float]:
@@ -43,6 +45,9 @@ class FakeLLM:
 def fake_llm(monkeypatch):
     f = FakeLLM()
     monkeypatch.setattr(llm, "_post", f._post)
+    # The chat agent's model; each call's messages land in f.chat_calls.
+    monkeypatch.setattr(agent_model, "build_model",
+                        lambda: FakeAgentModel(calls=f.chat_calls))
     return f
 
 
@@ -82,7 +87,7 @@ async def test_chat_uses_rag_context_and_cites(client, auth, fake_llm, db):
 
     # the chat call must have carried the retrieved context
     msgs = fake_llm.chat_calls[-1]
-    context_msgs = [m for m in msgs if m["role"] == "system" and "Context from" in m["content"]]
+    context_msgs = [m for m in msgs if m["role"] == "user" and "Context from" in m["content"]]
     assert context_msgs and "rent" in context_msgs[0]["content"].lower()
 
 

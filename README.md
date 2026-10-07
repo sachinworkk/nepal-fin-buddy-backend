@@ -119,6 +119,32 @@ Backend behaviour:
 
 `GET /prize/fiscal-years` proxies the portal's fiscal-year list (1h cache).
 
+## Chat assistant
+
+The assistant (`POST /chat/sessions/{id}/messages`) is a [Strands Agents](https://strandsagents.com/)
+agent over OpenRouter. It answers from the user's expenses and documents, and can
+record, edit and delete expenses.
+
+- **Memory is per chat session.** Strands snapshots the whole conversation, tool
+  calls and results included, into the `agent_storage` table under the chat
+  session's id and restores it on the next turn. The last 40 messages stay in the model's
+  context. Nothing carries over between chat sessions, and deleting a session
+  deletes its memory.
+- **Creates** run straight away (`source: "chat"`).
+- **Edits and deletes need confirmation.** The reply comes back with
+  `pending_actions`. Each pending action has an `interrupt_id`, an `action`
+  (`update`/`delete`), the `expense` as it is now and, for updates, the
+  `changes`. Show a Confirm/Cancel card, then call:
+
+  ```
+  POST /chat/sessions/{id}/actions
+  {"decisions": [{"interrupt_id": "...", "decision": "confirm" | "cancel"}]}
+  ```
+
+  The response is the assistant's follow-up message. Until the user decides,
+  new messages in that session get `409`. A decision must cover every pending action.
+  Once decided, the action's `decision` field is filled in on the original message.
+
 ## Tests and linting
 
 ```sh
