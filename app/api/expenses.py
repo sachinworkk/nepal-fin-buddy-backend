@@ -27,6 +27,17 @@ async def _set_bill_details(session, exp: Expense, details: ExpenseBill | None) 
         setattr(exp.bill, k, None if v == "" else v)
 
 
+def _set_scanned_bill_details(exp: Expense, details: ExpenseBill | None) -> None:
+    """Fill in or correct a scanned bill's tax-invoice details. The bill itself is never
+    removed here, and its vendor, total and date stay as scanned."""
+    if exp.bill is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "This expense's scanned bill no longer exists"
+        )
+    for k, v in (details or ExpenseBill()).model_dump().items():
+        setattr(exp.bill, k, None if v == "" else v)
+
+
 def _sync_bill(exp: Expense) -> None:
     """Mirror the expense's vendor, total, date and payment method onto its manual bill."""
     if exp.bill is None or exp.source == "bill":
@@ -98,10 +109,9 @@ async def update_expense(
     data = body.model_dump(exclude_unset=True, exclude={"bill"})
     if "bill" in body.model_fields_set:
         if exp.source == "bill":
-            raise HTTPException(
-                status.HTTP_409_CONFLICT, "Bill details of a scanned bill can't be edited"
-            )
-        await _set_bill_details(session, exp, body.bill)
+            _set_scanned_bill_details(exp, body.bill)
+        else:
+            await _set_bill_details(session, exp, body.bill)
     date_ad, date_bs = data.pop("expense_date", None), data.pop("expense_date_bs", None)
     if date_ad is not None or date_bs is not None:
         exp.expense_date_ad, bs = resolve_date(date_ad, date_bs)
