@@ -7,3 +7,7 @@ storage/
 *.pyc
 storage-test/
 976029276_qtd1hcg.pdf
+
+# MLflow local stores
+mlflow.db
+mlruns/

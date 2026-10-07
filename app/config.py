@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     # (they surface as misleading "form expired" errors).
     prize_user_submit_interval_seconds: float = 8.0
 
+    # MLflow tracing (metadata only, never prompt text). Off unless mlflow_enabled.
+    mlflow_enabled: bool = False
+    mlflow_tracking_uri: str = ""
+    mlflow_experiment: str = "nepal-fin-buddy"
+    # Also record chat query/answer text on the chat.turn span. Contains financial data.
+    mlflow_log_content: bool = False
+
     storage_dir: str = "./storage"
     eval_judge_model: str = "openai/gpt-oss-120b"
 

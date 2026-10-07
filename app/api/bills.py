@@ -16,6 +16,7 @@ from app.core.dates import parse_date_any
 from app.extraction import bill_checks, extract_bill
 from app.llm import LlmError
 from app.models import Bill, BillItem, Document, Expense, Extraction, PrizeEnrollment
+from app.observability import trace_span
 from app.rag import index_document_safe
 from app.schemas.bills import BillConfirm, BillOut, BillUpdate
 from app.schemas.common import resolve_date
@@ -74,7 +75,10 @@ async def upload_bill(file: UploadFile, user: CurrentUser, session: SessionDep):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
 
-    confidence, _flags = bill_checks(fields)
+    confidence, flags = bill_checks(fields)
+    with trace_span("bill.extraction_quality", confidence=float(confidence),
+                    flag_count=len(flags), mime_type=file.content_type) as span:
+        span.set(flags=",".join(sorted(str(f) for f in flags)))
     items = fields.pop("items") or []
     bill = Bill(
         user_id=user.id, image_path=str(path), image_sha256=sha,

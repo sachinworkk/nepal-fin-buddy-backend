@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.llm import embed
 from app.models import EMBED_DIM, Document, DocumentChunk
+from app.observability import trace_span
 
 log = structlog.get_logger()
 
@@ -170,6 +171,12 @@ async def retrieve(
     session: AsyncSession, user_id: uuid.UUID, query: str, top_k: int = FINAL_TOP_K,
     document_id: uuid.UUID | None = None,
 ) -> list[DocumentChunk]:
+    with trace_span("rag.retrieve", span_type="RETRIEVER", top_k=top_k,
+                    scoped=document_id is not None) as span:
+        return await _retrieve(session, user_id, query, top_k, document_id, span)
+
+
+async def _retrieve(session, user_id, query, top_k, document_id, span) -> list[DocumentChunk]:
     """Hybrid retrieval: vector + keyword candidates, reranked by the local cross-encoder.
 
     Falls back to plain cosine ranking when the reranker is disabled or unavailable.
@@ -189,9 +196,12 @@ async def retrieve(
         if c.id not in seen:
             seen.add(c.id)
             candidates.append(c)
+    span.set(vector_hits=len(vec_hits), keyword_hits=len(kw_hits), candidates=len(candidates),
+             reranked=False)
     if not candidates:
         return []
     if len(candidates) <= top_k:
+        span.set(returned=len(candidates))
         return candidates
 
     if s.rerank_enabled:
@@ -199,6 +209,8 @@ async def retrieve(
             scores = await rerank(query, [c.content for c in candidates])
             ranked = sorted(zip(candidates, scores, strict=True), key=lambda p: -p[1])
             ranked = [(c, sc) for c, sc in ranked if sc >= RERANK_MIN_SCORE]
+            span.set(reranked=True, top_rerank_score=float(ranked[0][1]) if ranked else None,
+                     returned=min(len(ranked), top_k) or top_k)
             return [c for c, _ in ranked[:top_k]] or candidates[:top_k]
         except Exception as e:  # reranker must never break chat
             log.warning("rag.rerank_failed", error=str(e))

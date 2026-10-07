@@ -1,10 +1,20 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import auth, bills, chat, dates, documents, expenses, lookups, prize, stats
 from app.config import get_settings
+from app.observability import init_mlflow
 
-app = FastAPI(title="Nepal Fin Buddy")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    init_mlflow()
+    yield
+
+
+app = FastAPI(title="Nepal Fin Buddy", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in get_settings().cors_origins.split(",") if o.strip()],
