@@ -68,3 +68,41 @@ async def test_user_isolation(client, auth, other_auth):
         assert (await call(f"/expenses/{eid}", headers=other_auth)).status_code == 404
     assert (await client.patch(f"/expenses/{eid}", headers=other_auth, json={"note": "x"})).status_code == 404
     assert (await client.get(f"/expenses/{eid}", headers=auth)).status_code == 200
+
+
+BILL = {"vendor_pan": "301234567", "bill_number": "INV-42", "subtotal": "1000.00",
+        "discount": "0.00", "taxable_amount": "1000.00", "vat_amount": "130.00"}
+
+
+async def test_manual_bill_details(client, auth):
+    r = await client.post("/expenses", headers=auth, json=exp(
+        amount="1130.00", payment_method="cash", bill=BILL))
+    assert r.status_code == 201, r.text
+    e = r.json()
+    assert e["source"] == "manual" and e["bill_id"]
+    assert e["bill"] == {**BILL, "vendor_name": "Bhatbhateni", "total_amount": "1130.00"}
+    # The image-less bill is confirmed, so it lists alongside snapped bills.
+    bill = (await client.get(f"/bills/{e['bill_id']}", headers=auth)).json()
+    assert bill["status"] == "confirmed" and not bill["has_image"]
+    assert bill["bill_date_ad"] == "2026-09-01" and bill["payment_method"] == "cash"
+
+    # Editing the expense keeps the bill in step.
+    r = await client.patch(f"/expenses/{e['id']}", headers=auth, json={
+        "amount": "1200.00", "merchant": "BigMart", "bill": {**BILL, "bill_number": "INV-43"}})
+    assert r.json()["bill"]["bill_number"] == "INV-43"
+    assert r.json()["bill"]["vendor_name"] == "BigMart" and r.json()["bill"]["total_amount"] == "1200.00"
+
+    # An empty bill removes it; deleting the expense removes a remaining bill too.
+    r = await client.patch(f"/expenses/{e['id']}", headers=auth, json={"bill": {}})
+    assert r.json()["bill"] is None and r.json()["bill_id"] is None
+    assert (await client.get(f"/bills/{e['bill_id']}", headers=auth)).status_code == 404
+    r = await client.post("/expenses", headers=auth, json=exp(bill=BILL))
+    await client.delete(f"/expenses/{r.json()['id']}", headers=auth)
+    assert (await client.get("/bills", headers=auth)).json() == []
+
+
+async def test_no_bill_without_details(client, auth):
+    r = await client.post("/expenses", headers=auth, json=exp(bill={"vendor_pan": ""}))
+    assert r.json()["bill"] is None and r.json()["bill_id"] is None
+    assert (await client.post("/expenses", headers=auth, json=exp(
+        bill={**BILL, "vat_amount": "1.234"}))).status_code == 422
