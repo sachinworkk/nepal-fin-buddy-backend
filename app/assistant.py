@@ -16,6 +16,7 @@ from app.core.categories import Category
 from app.core.dates import ad_to_bs, bs_to_ad
 from app.llm import LlmError, chat_with_tools
 from app.models import DocumentChunk, Expense
+from app.observability import trace_span
 from app.rag import retrieve
 
 log = structlog.get_logger()
@@ -230,8 +231,10 @@ async def run_agent(session: AsyncSession, user_id: uuid.UUID, messages: list[di
         for call in calls:
             fn = call.get("function") or {}
             name = fn.get("name", "")
-            result, args = await _run_tool(session, user_id, name, fn.get("arguments", ""),
-                                           document_id, chunks)
+            with trace_span(f"tool.{name}", span_type="TOOL", tool=name) as tspan:
+                result, args = await _run_tool(session, user_id, name, fn.get("arguments", ""),
+                                               document_id, chunks)
+                tspan.set(result_chars=len(result))
             audit.append({"name": name, "args": args, "result": result[:2000]})
             messages.append({"role": "tool", "tool_call_id": call.get("id", ""),
                              "content": result})

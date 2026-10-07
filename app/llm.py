@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import LlmCallLog
+from app.observability import trace_span
 
 log = structlog.get_logger()
 
@@ -22,6 +23,17 @@ class LlmError(Exception):
 
 
 async def _post(session: AsyncSession, purpose: str, user_id, path: str, body: dict) -> dict:
+    with trace_span(f"llm.{purpose}", span_type="LLM", purpose=purpose,
+                    model=body.get("model")) as span:
+        data = await _post_inner(session, purpose, user_id, path, body, span)
+        usage = data.get("usage") or {}
+        span.set(prompt_tokens=usage.get("prompt_tokens"),
+                 completion_tokens=usage.get("completion_tokens"))
+        return data
+
+
+async def _post_inner(session: AsyncSession, purpose: str, user_id, path: str, body: dict,
+                      span) -> dict:
     s = get_settings()
     key = s.openrouter_api_key
     if not key:
@@ -65,6 +77,7 @@ async def _post(session: AsyncSession, purpose: str, user_id, path: str, body: d
         await _log(session, purpose, body.get("model"), gen_id,
                    usage.get("prompt_tokens"), usage.get("completion_tokens"), latency,
                    None, None, "ok", resp.status_code, None, attempt)
+        span.set(latency_ms=latency, attempts=attempt, http_status=resp.status_code)
         return data
 
 

@@ -10,6 +10,7 @@ from app.api.deps import CurrentUser, SessionDep
 from app.assistant import run_agent, system_messages
 from app.llm import LlmError
 from app.models import ChatMessage, ChatSession, Document
+from app.observability import trace_span
 from app.rag import retrieve
 from app.schemas.chat import (
     ChatMessageIn,
@@ -70,6 +71,13 @@ async def delete_session(session_id: uuid.UUID, user: CurrentUser, session: Sess
 @router.post("/sessions/{session_id}/messages", response_model=ChatMessageOut)
 async def send_message(session_id: uuid.UUID, body: ChatMessageIn,
                        user: CurrentUser, session: SessionDep):
+    # No user id on the trace; query/answer text only when MLFLOW_LOG_CONTENT is on.
+    with trace_span("chat.turn", span_type="AGENT", scoped=body.document_id is not None) as span:
+        return await _send_message(session_id, body, user, session, span)
+
+
+async def _send_message(session_id: uuid.UUID, body: ChatMessageIn, user, session, span):
+    span.io(inputs={"query": body.content})
     cs = await _owned_session(session, user, session_id)
     user_id, cs_id = user.id, cs.id
     history = list(await session.scalars(
@@ -121,6 +129,8 @@ async def send_message(session_id: uuid.UUID, body: ChatMessageIn,
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"LLM call failed: {e}") from None
     if not answer:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "LLM returned an empty response")
+    span.set(chunks=len(chunks), tool_calls=len(tool_audit), answer_chars=len(answer))
+    span.io(outputs={"answer": answer})
 
     by_ref = {(c.meta.get("title", "document"), c.chunk_index): c for c in chunks}
     cited = set(re.findall(r"\[([^|\]]+)\s*\|\s*chunk\s*(\d+)\]", answer))
@@ -143,6 +153,7 @@ async def send_message(session_id: uuid.UUID, body: ChatMessageIn,
             snippet=c.content[:200],
         ) for c in chunks]
 
+    span.set(citations=len(citations))
     for t in tool_audit:
         session.add(ChatMessage(session_id=cs_id, role="tool", content=t["result"],
                                 tool_name=t["name"], tool_args=t["args"]))

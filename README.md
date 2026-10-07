@@ -146,3 +146,19 @@ Integration tests need the Postgres container from step 3 running.
 | `PRIZE_MIN_FORM_AGE_SECONDS`, `PRIZE_MAX_FORM_AGE_SECONDS` | Allowed age of `form_started_at` |
 | `PRIZE_USER_SUBMIT_INTERVAL_SECONDS` | Minimum spacing between submissions per user |
 | `STORAGE_DIR` | Where uploaded documents are saved |
+
+## MLflow monitoring
+
+Optional tracing of LLM calls, chat turns (retrieve, rerank, tool rounds) and bill extraction
+quality. Metadata only (model, tokens, latency, counts, scores); prompts and answers are never
+logged unless `MLFLOW_LOG_CONTENT=true`, which records the chat query and answer on the
+`chat.turn` trace. Off by default.
+
+```
+MLFLOW_ENABLED=true
+MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+MLFLOW_EXPERIMENT=nepal-fin-buddy
+```
+
+View traces with `uv run mlflow ui --backend-store-uri sqlite:///mlflow.db`. MLflow errors are
+logged as warnings and never fail a request.

@@ -16,6 +16,7 @@ TEST_DB = "finbuddy_test"
 TEST_URL = _url.set(database=TEST_DB).render_as_string(hide_password=False)
 os.environ["DATABASE_URL"] = TEST_URL
 os.environ["STORAGE_DIR"] = "./storage-test"
+os.environ["MLFLOW_ENABLED"] = "false"
 get_settings.cache_clear()
 
 
