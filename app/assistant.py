@@ -1,36 +1,38 @@
-"""Hybrid assistant: typed SQL tools over the user's expenses + document search, driven by a
-tool-calling loop. user_id is always injected server-side, never taken from model arguments."""
+"""The assistant's system prompt and the read-only queries behind its tools.
+The Strands agent and its tools live in app.agent."""
 
 import datetime as dt
-import json
 import uuid
 from decimal import Decimal
 from typing import Literal
 
-import structlog
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.categories import Category
 from app.core.dates import ad_to_bs, bs_to_ad
-from app.llm import LlmError, chat_with_tools
 from app.models import DocumentChunk, Expense
-from app.observability import trace_span
-from app.rag import retrieve
 
-log = structlog.get_logger()
-
-MAX_TOOL_ROUNDS = 4
 STATEMENT_TIMEOUT = "3s"
 
 SYSTEM_PROMPT = """You are Nepal Fin Buddy's assistant. You help the user understand their \
-finances using their expenses, uploaded bills and documents.
+finances using their expenses, uploaded bills and documents, and you can record, edit \
+and delete their expenses.
 Tools:
 - aggregate_expenses / list_expenses query the user's recorded expenses. Use them for any \
 question about totals, counts, averages, rankings or lists of spending. Never compute totals \
 from memory or guess.
 - search_documents searches the user's bills and documents for details (items, vendors, VAT).
+- create_expense records a new expense. If the user didn't give the amount or what it was \
+for, ask instead of guessing; pick the closest category yourself. The date defaults to today.
+- update_expense / delete_expense change or remove an expense. First find it with \
+list_expenses and use its id; never guess an id. If several expenses match, ask which one. \
+The app itself shows the user a confirm/cancel prompt for every edit and delete, so call \
+the tool directly; never ask "are you sure?" in text first. If they cancel, accept that.
+- After any change, say exactly what was recorded, changed or deleted.
+- If one source answers the question (e.g. a bill in the documents), answer from it and don't \
+mention that another tool found nothing.
 Rules:
 - Ground every factual claim in tool results or the provided context; if they don't contain \
 the answer, say you don't have that information instead of guessing.
@@ -67,23 +69,6 @@ class ListArgs(BaseModel):
 class SearchArgs(BaseModel):
     query: str = Field(min_length=1, max_length=500)
     document_id: uuid.UUID | None = None
-
-
-def _tool(name: str, description: str, model: type[BaseModel]) -> dict:
-    schema = model.model_json_schema()
-    schema.pop("title", None)
-    return {"type": "function",
-            "function": {"name": name, "description": description, "parameters": schema}}
-
-
-TOOLS = [
-    _tool("aggregate_expenses",
-          "Sum, count or average the user's expenses, optionally grouped and filtered. "
-          "Dates are AD (YYYY-MM-DD), inclusive.", AggregateArgs),
-    _tool("list_expenses", "List individual expenses, newest first (max 50).", ListArgs),
-    _tool("search_documents",
-          "Search the user's bills and documents; returns text chunks with titles.", SearchArgs),
-]
 
 
 def _filters(a: AggregateArgs | ListArgs, user_id: uuid.UUID) -> list:
@@ -139,19 +124,19 @@ async def aggregate_expenses(session: AsyncSession, user_id: uuid.UUID,
 
 
 async def list_expenses(session: AsyncSession, user_id: uuid.UUID, a: ListArgs) -> dict:
-    q = (select(Expense.expense_date_ad, Expense.amount, Expense.category, Expense.merchant,
-                Expense.note, Expense.expense_date_bs_raw)
+    q = (select(Expense.id, Expense.expense_date_ad, Expense.amount, Expense.category,
+                Expense.merchant, Expense.note, Expense.expense_date_bs_raw)
          .where(*_filters(a, user_id))
          .order_by(Expense.expense_date_ad.desc(), Expense.created_at.desc())
          .limit(a.limit))
     rows = await _read_only_rows(session, q)
     return {"currency": "NPR", "expenses": [
-        {"date": _jsonable(r.expense_date_ad), "date_bs": r.expense_date_bs_raw,
+        {"id": str(r.id), "date": _jsonable(r.expense_date_ad), "date_bs": r.expense_date_bs_raw,
          "amount": _jsonable(r.amount), "category": r.category, "merchant": r.merchant,
          "note": r.note} for r in rows]}
 
 
-def _chunk_text(chunks: list[DocumentChunk]) -> str:
+def chunk_text(chunks: list[DocumentChunk]) -> str:
     return "\n\n---\n\n".join(
         f"[{c.meta.get('title', 'document')} | chunk {c.chunk_index}]\n{c.content}"
         for c in chunks)
@@ -167,77 +152,12 @@ def bs_month_range(today: dt.date, offset: int = 0) -> tuple[dt.date, dt.date, s
     return start, end, f"{idx // 12}-{idx % 12 + 1:02d}"
 
 
-def system_messages(today: dt.date) -> list[dict]:
+def system_prompt(today: dt.date) -> str:
+    """The system prompt with today's AD/BS date and month ranges; rebuilt every turn."""
     bs = ad_to_bs(today)
     this_s, this_e, this_l = bs_month_range(today, 0)
     last_s, last_e, last_l = bs_month_range(today, -1)
-    return [{"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "system",
-             "content": f"Today is {today.isoformat()} AD ({bs.year}-{bs.month:02d}-"
-                        f"{bs.day:02d} BS).\n"
-                        f"This month (BS {this_l}): {this_s.isoformat()} to {this_e.isoformat()}.\n"
-                        f"Last month (BS {last_l}): {last_s.isoformat()} to "
-                        f"{last_e.isoformat()}."}]
-
-
-async def _run_tool(session: AsyncSession, user_id: uuid.UUID, name: str, raw_args: str,
-                    document_id: uuid.UUID | None,
-                    chunks: list[DocumentChunk]) -> tuple[str, dict]:
-    """Execute one tool call. Returns (result_text_for_model, parsed_args_for_audit).
-    Validation problems are returned to the model as text so it can retry."""
-    try:
-        args = json.loads(raw_args or "{}")
-        if not isinstance(args, dict):
-            raise ValueError("arguments must be a JSON object")
-        args.pop("user_id", None)  # never trusted; scoping is server-side
-        if name == "aggregate_expenses":
-            result = await aggregate_expenses(session, user_id, AggregateArgs(**args))
-        elif name == "list_expenses":
-            result = await list_expenses(session, user_id, ListArgs(**args))
-        elif name == "search_documents":
-            sa = SearchArgs(**args)
-            # A scoped chat stays scoped; the model can't widen it.
-            found = await retrieve(session, user_id, sa.query, top_k=6,
-                                   document_id=document_id or sa.document_id)
-            known = {c.id for c in chunks}
-            chunks.extend(c for c in found if c.id not in known)
-            return (_chunk_text(found) or "No matching documents."), args
-        else:
-            return f"Unknown tool {name!r}.", {}
-        return json.dumps(result), args
-    except (ValidationError, ValueError) as e:
-        return f"Invalid arguments: {e}", {}
-    except LlmError as e:
-        return f"Tool failed: {e}", {}
-    except Exception as e:  # DB timeout etc. must not 500 the chat
-        log.warning("assistant.tool_failed", tool=name, error=str(e))
-        return "Tool failed; answer without it or say you couldn't look that up.", {}
-
-
-async def run_agent(session: AsyncSession, user_id: uuid.UUID, messages: list[dict],
-                    chunks: list[DocumentChunk], document_id: uuid.UUID | None = None,
-                    ) -> tuple[str, list[dict]]:
-    """Tool-calling loop. `chunks` is mutated with chunks found via search_documents so the
-    caller can validate citations. Returns (answer, tool_audit) where tool_audit is a list of
-    {"name", "args", "result"} for persistence."""
-    audit: list[dict] = []
-    for _ in range(MAX_TOOL_ROUNDS):
-        msg = await chat_with_tools(session, user_id, messages, TOOLS)
-        calls = msg.get("tool_calls") or []
-        if not calls:
-            return msg.get("content") or "", audit
-        messages.append({"role": "assistant", "content": msg.get("content") or "",
-                         "tool_calls": calls})
-        for call in calls:
-            fn = call.get("function") or {}
-            name = fn.get("name", "")
-            with trace_span(f"tool.{name}", span_type="TOOL", tool=name) as tspan:
-                result, args = await _run_tool(session, user_id, name, fn.get("arguments", ""),
-                                               document_id, chunks)
-                tspan.set(result_chars=len(result))
-            audit.append({"name": name, "args": args, "result": result[:2000]})
-            messages.append({"role": "tool", "tool_call_id": call.get("id", ""),
-                             "content": result})
-    # Out of rounds: force a final answer without offering tools.
-    msg = await chat_with_tools(session, user_id, messages, None)
-    return msg.get("content") or "", audit
+    return (f"{SYSTEM_PROMPT}\n\n"
+            f"Today is {today.isoformat()} AD ({bs.year}-{bs.month:02d}-{bs.day:02d} BS).\n"
+            f"This month (BS {this_l}): {this_s.isoformat()} to {this_e.isoformat()}.\n"
+            f"Last month (BS {last_l}): {last_s.isoformat()} to {last_e.isoformat()}.")

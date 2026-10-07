@@ -1,7 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from app.assistant import TOOLS, AggregateArgs, ListArgs, SearchArgs
+from app.agent.tools import TOOLS
+from app.assistant import AggregateArgs, ListArgs, SearchArgs
 
 
 def test_aggregate_defaults():
@@ -30,21 +31,23 @@ def test_search_requires_query():
 
 
 def test_tools_expose_no_user_id():
-    assert {t["function"]["name"] for t in TOOLS} == {
-        "aggregate_expenses", "list_expenses", "search_documents"}
+    assert {t.tool_name for t in TOOLS} == {
+        "aggregate_expenses", "list_expenses", "search_documents",
+        "create_expense", "update_expense", "delete_expense"}
     for t in TOOLS:
-        assert "user_id" not in t["function"]["parameters"]["properties"]
+        props = t.tool_spec["inputSchema"]["json"]["properties"]
+        assert not {"user_id", "tool_context", "document_ids"} & set(props), t.tool_name
 
 
 def test_system_message_has_bs_month_ranges():
     import datetime as dt
 
-    from app.assistant import bs_month_range, system_messages
+    from app.assistant import bs_month_range, system_prompt
 
     today = dt.date(2026, 10, 5)  # Ashwin 2083
     start, end, label = bs_month_range(today, -1)  # Bhadra
     assert label == "2083-05"
     assert start < end < dt.date(2026, 9, 20) and (end - start).days in (28, 29, 30, 31)
     assert bs_month_range(today, 0)[0] == end + dt.timedelta(days=1)
-    text = system_messages(today)[1]["content"]
+    text = system_prompt(today)
     assert start.isoformat() in text and end.isoformat() in text

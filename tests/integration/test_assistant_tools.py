@@ -1,15 +1,17 @@
-"""SQL tools + tool-calling loop, with OpenRouter stubbed out."""
+"""SQL tools + the Strands chat agent (memory, expense writes, confirmations), with the
+model and OpenRouter stubbed out."""
 
 import datetime as dt
-import json
 import uuid
 
 import pytest
 from sqlalchemy import select, text
 
 from app import assistant, llm
+from app.agent import model as agent_model
 from app.assistant import AggregateArgs, ListArgs
-from app.models import ChatMessage
+from app.models import AgentStorage, ChatMessage, Expense
+from tests.integration.fake_agent import FakeAgentModel
 from tests.integration.test_rag_chat import FakeLLM
 
 D = dt.date(2026, 9, 10)
@@ -77,85 +79,203 @@ async def test_read_only_enforced(client, auth, db):
         await assistant._read_only_rows(db, text("DELETE FROM expenses"))
 
 
-class ToolLLM(FakeLLM):
-    """Round 1: model asks for a tool call; round 2: answers from the tool result."""
-
-    def __init__(self, calls: list[dict]):
-        super().__init__()
-        self.calls = calls
-
-    async def _post(self, session, purpose, user_id, path, body):
-        if path == "/chat/completions":
-            self.chat_calls.append(body["messages"])
-            await llm._log(session, purpose, body.get("model"), "g", 1, 1, 1, None, None,
-                           "ok", 200, None, 1)
-            last = body["messages"][-1]
-            if last["role"] == "tool":
-                return {"choices": [{"message": {"content": f"Result: {last['content']}"}}]}
-            return {"choices": [{"message": {"content": "", "tool_calls": [
-                {"id": f"c{i}", "type": "function", "function": c}
-                for i, c in enumerate(self.calls)]}}]}
-        return await super()._post(session, purpose, user_id, path, body)
-
-
 @pytest.fixture
-def tool_llm(monkeypatch):
-    def make(calls):
-        f = ToolLLM(calls)
-        monkeypatch.setattr(llm, "_post", f._post)
-        return f
+def agent(monkeypatch):
+    """Script the chat model: agent([{"tools": [...]}, {"text": ...}, ...])."""
+    def make(script, default="ok"):
+        monkeypatch.setattr(llm, "_post", FakeLLM()._post)  # embeddings for retrieval
+        m = FakeAgentModel(script, default=default)
+        monkeypatch.setattr(agent_model, "build_model", lambda: m)
+        return m
     return make
 
 
+async def _new_session(client, auth) -> str:
+    return (await client.post("/chat/sessions", headers=auth)).json()["id"]
+
+
+async def _say(client, auth, sid, content):
+    return await client.post(f"/chat/sessions/{sid}/messages", headers=auth,
+                             json={"content": content})
+
+
 async def _ask(client, auth, content="total groceries?"):
-    sid = (await client.post("/chat/sessions", headers=auth)).json()["id"]
-    r = await client.post(f"/chat/sessions/{sid}/messages", headers=auth,
-                          json={"content": content})
-    return sid, r
+    sid = await _new_session(client, auth)
+    return sid, await _say(client, auth, sid, content)
 
 
-async def test_agent_round_trip_persists_tool_rows(client, auth, tool_llm, db):
+async def _decide(client, auth, sid, decisions):
+    return await client.post(f"/chat/sessions/{sid}/actions", headers=auth, json={
+        "decisions": [{"interrupt_id": i, "decision": d} for i, d in decisions]})
+
+
+async def _expense_id(client, auth) -> str:
+    return (await client.get("/expenses", headers=auth)).json()[0]["id"]
+
+
+ANSWER = {"text": "Result: {last_tool}"}
+
+
+async def test_agent_round_trip_persists_tool_rows(client, auth, agent, db):
     await add(client, auth, "120.00")
-    f = tool_llm([{"name": "aggregate_expenses", "arguments": json.dumps(
-        {"metric": "sum", "category": "groceries", "user_id": str(uuid.uuid4())})}])
+    m = agent([{"tools": [("aggregate_expenses", {
+        "metric": "sum", "category": "groceries", "user_id": str(uuid.uuid4())})]}, ANSWER])
     sid, r = await _ask(client, auth)
     assert r.status_code == 200, r.text
     assert "120.00" in r.json()["content"]
-    # tools were offered, and the system prompt carried today's date
-    assert any("Today is" in m["content"] for m in f.chat_calls[0] if m["role"] == "system")
+    assert "Today is" in m.calls[0][0]["content"]  # system prompt carries today's date
     tool_rows = list((await db.execute(
         select(ChatMessage).where(ChatMessage.role == "tool"))).scalars())
     assert [t.tool_name for t in tool_rows] == ["aggregate_expenses"]
-    assert "user_id" not in tool_rows[0].tool_args
     # tool rows stay out of the visible transcript
     detail = (await client.get(f"/chat/sessions/{sid}", headers=auth)).json()
     assert [m["role"] for m in detail["messages"]] == ["user", "assistant"]
 
 
-async def test_agent_uses_only_callers_expenses(client, auth, other_auth, tool_llm):
+async def test_agent_uses_only_callers_expenses(client, auth, other_auth, agent):
     await add(client, other_auth, "777.00")
-    tool_llm([{"name": "aggregate_expenses", "arguments": "{}"}])
+    agent([{"tools": [("aggregate_expenses", {})]}, ANSWER])
     _, r = await _ask(client, auth)
     assert "777" not in r.json()["content"]
 
 
-async def test_invalid_tool_args_reach_model_as_text(client, auth, tool_llm):
-    tool_llm([{"name": "list_expenses", "arguments": json.dumps({"limit": 500})}])
+async def test_invalid_tool_args_reach_model_as_text(client, auth, agent):
+    agent([{"tools": [("list_expenses", {"limit": 500})]}, ANSWER])
     _, r = await _ask(client, auth)
     assert r.status_code == 200
     assert "Invalid arguments" in r.json()["content"]
 
 
-async def test_unknown_tool_and_bad_json_do_not_500(client, auth, tool_llm):
-    tool_llm([{"name": "drop_tables", "arguments": "{}"},
-              {"name": "list_expenses", "arguments": "{not json"}])
+async def test_unknown_tool_does_not_500(client, auth, agent):
+    agent([{"tools": [("drop_tables", {}), ("list_expenses", {})]}, ANSWER])
     _, r = await _ask(client, auth)
     assert r.status_code == 200
 
 
-async def test_sql_answers_do_not_attach_unrelated_citations(client, auth, tool_llm):
+async def test_sql_answers_do_not_attach_unrelated_citations(client, auth, agent):
     await client.post("/documents", headers=auth, json={"title": "Note", "text": "rent note"})
     await add(client, auth, "10.00")
-    tool_llm([{"name": "aggregate_expenses", "arguments": "{}"}])
+    agent([{"tools": [("aggregate_expenses", {})]}, ANSWER])
     _, r = await _ask(client, auth)
     assert r.json()["citations"] == []
+
+
+async def test_memory_spans_turns_but_not_sessions(client, auth, agent):
+    await add(client, auth, "321.00", merchant="Roadhouse")
+    m = agent([{"tools": [("list_expenses", {})]}, ANSWER, {"text": "second"},
+               {"text": "other session"}])
+    sid, _ = await _ask(client, auth, "what did I spend?")
+    await _say(client, auth, sid, "and where was that?")
+    # the second turn's model call still sees the first turn's tool call and result
+    second = "\n".join(x["content"] for x in m.calls[2])
+    assert "list_expenses" in second and "Roadhouse" in second
+    assert "what did I spend?" in second
+
+    other = await _new_session(client, auth)
+    await _say(client, auth, other, "anything?")
+    fresh = m.calls[3]
+    assert [x["role"] for x in fresh] == ["system", "user"]
+    assert "Roadhouse" not in fresh[1]["content"]
+
+
+async def test_deleting_session_drops_agent_memory(client, auth, agent, db):
+    agent([{"text": "hi"}])
+    sid, _ = await _ask(client, auth, "hello")
+    keys = lambda: db.scalars(select(AgentStorage.key).where(  # noqa: E731
+        AgentStorage.key.contains(sid)))
+    assert list(await keys())
+    assert (await client.delete(f"/chat/sessions/{sid}", headers=auth)).status_code == 204
+    assert list(await keys()) == []
+
+
+async def test_create_expense_from_chat(client, auth, other_auth, agent):
+    agent([{"tools": [("create_expense", {
+        "amount": "450", "category": "dining", "merchant": "Roadhouse", "note": "momo",
+        "user_id": "nope"})]}, ANSWER])
+    _, r = await _ask(client, auth, "I spent Rs 450 on momo at Roadhouse today")
+    assert r.status_code == 200, r.text
+    assert "created" in r.json()["content"]
+    rows = (await client.get("/expenses", headers=auth)).json()
+    assert len(rows) == 1
+    e = rows[0]
+    assert (e["amount"], e["category"], e["merchant"], e["source"]) == (
+        "450.00", "dining", "Roadhouse", "chat")
+    assert e["expense_date_ad"] == dt.date.today().isoformat()
+    assert (await client.get("/expenses", headers=other_auth)).json() == []
+
+
+async def test_create_expense_rejects_bad_category(client, auth, agent):
+    agent([{"tools": [("create_expense", {"amount": "10", "category": "yachts"})]}, ANSWER])
+    _, r = await _ask(client, auth, "add it")
+    assert r.status_code == 200
+    assert (await client.get("/expenses", headers=auth)).json() == []
+
+
+async def test_delete_waits_for_confirmation(client, auth, agent, db):
+    await add(client, auth, "99.00")
+    eid = await _expense_id(client, auth)
+    agent([{"tools": [("delete_expense", {"expense_id": eid})]}, ANSWER])
+    sid, r = await _ask(client, auth, "delete it")
+    assert r.status_code == 200, r.text
+    [action] = r.json()["pending_actions"]
+    assert action["action"] == "delete" and action["expense"]["id"] == eid
+    assert action["decision"] is None
+    assert (await client.get(f"/expenses/{eid}", headers=auth)).status_code == 200
+
+    # nothing else may happen in the chat until the user decides
+    assert (await _say(client, auth, sid, "hello?")).status_code == 409
+
+    r = await _decide(client, auth, sid, [(action["interrupt_id"], "confirm")])
+    assert r.status_code == 200, r.text
+    assert "deleted" in r.json()["content"]
+    assert (await client.get(f"/expenses/{eid}", headers=auth)).status_code == 404
+    detail = (await client.get(f"/chat/sessions/{sid}", headers=auth)).json()
+    assert detail["messages"][1]["pending_actions"][0]["decision"] == "confirm"
+    tools = list(await db.scalars(select(ChatMessage.tool_name).where(
+        ChatMessage.role == "tool")))
+    assert tools == ["delete_expense"]
+    # and the chat is unblocked again
+    assert (await _say(client, auth, sid, "thanks")).status_code == 200
+
+
+async def test_update_cancel_then_confirm(client, auth, agent):
+    await add(client, auth, "100.00")
+    eid = await _expense_id(client, auth)
+    upd = {"tools": [("update_expense", {"expense_id": eid, "amount": "500"})]}
+    agent([upd, ANSWER, upd, ANSWER])
+    sid, r = await _ask(client, auth, "change it to 500")
+    [action] = r.json()["pending_actions"]
+    assert action["changes"] == {"amount": "500"}
+    assert action["expense"]["amount"] == "100.00"
+    r = await _decide(client, auth, sid, [(action["interrupt_id"], "cancel")])
+    assert "cancelled" in r.json()["content"]
+    assert (await client.get(f"/expenses/{eid}", headers=auth)).json()["amount"] == "100.00"
+
+    r = await _say(client, auth, sid, "actually yes, change it")
+    [action] = r.json()["pending_actions"]
+    await _decide(client, auth, sid, [(action["interrupt_id"], "confirm")])
+    assert (await client.get(f"/expenses/{eid}", headers=auth)).json()["amount"] == "500.00"
+
+
+async def test_cannot_touch_other_users_expense(client, auth, other_auth, agent):
+    await add(client, other_auth, "55.00")
+    eid = await _expense_id(client, other_auth)
+    agent([{"tools": [("delete_expense", {"expense_id": eid})]}, ANSWER])
+    _, r = await _ask(client, auth, "delete it")
+    assert r.json()["pending_actions"] is None
+    assert "not found" in r.json()["content"]
+    assert (await client.get(f"/expenses/{eid}", headers=other_auth)).status_code == 200
+
+
+async def test_actions_endpoint_rejects_bad_decisions(client, auth, other_auth, agent, db):
+    await add(client, auth, "10.00")
+    eid = await _expense_id(client, auth)
+    sid = await _new_session(client, auth)
+    agent([{"tools": [("delete_expense", {"expense_id": eid})]}, ANSWER])
+    assert (await _decide(client, auth, sid, [("x", "confirm")])).status_code == 409
+    r = await _say(client, auth, sid, "delete it")
+    [action] = r.json()["pending_actions"]
+    assert (await _decide(client, auth, sid, [("x", "confirm")])).status_code == 409
+    assert (await _decide(client, other_auth, sid,
+                          [(action["interrupt_id"], "confirm")])).status_code == 404
+    assert await db.scalar(select(Expense.id).where(Expense.id == uuid.UUID(eid)))
