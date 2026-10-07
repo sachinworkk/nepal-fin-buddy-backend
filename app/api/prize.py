@@ -7,7 +7,7 @@ from typing import Annotated
 import httpx
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.api.deps import CurrentUser, SessionDep, get_owned
 from app.config import get_settings
@@ -220,6 +220,7 @@ async def list_eligible(user: CurrentUser, session: SessionDep, http: PrizeClien
         Bill.user_id == user.id, Bill.status == "confirmed",
         Bill.vendor_pan.is_not(None), Bill.bill_number.is_not(None),
         Bill.bill_date_ad.is_not(None), Bill.total_amount.is_not(None),
+        or_(Bill.payment_method.is_(None), Bill.payment_method == "cash"),
     ).order_by(Bill.bill_date_ad.desc()))
 
     try:

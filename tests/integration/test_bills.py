@@ -97,3 +97,18 @@ async def test_bill_image_owner_only(client, auth, other_auth, db, tmp_path):
     assert r.content == b"\x89PNG fake"
     assert (await client.get(f"/bills/{bid}", headers=auth)).json()["has_image"] is True
     assert (await client.get(f"/bills/{bid}/image", headers=other_auth)).status_code == 404
+
+
+async def test_confirm_copies_payment_method_to_expense(client, auth, db):
+    bid = await make_bill(client, auth, db)
+    r = await client.post(f"/bills/{bid}/confirm", headers=auth,
+                          json={**CONFIRM, "payment_method": "card"})
+    assert r.status_code == 200, r.text
+    assert r.json()["payment_method"] == "card"
+    assert (await client.get("/expenses", headers=auth)).json()[0]["payment_method"] == "card"
+
+
+async def test_confirm_rejects_unknown_payment_method(client, auth, db):
+    bid = await make_bill(client, auth, db)
+    bad = {**CONFIRM, "payment_method": "bitcoin"}
+    assert (await client.post(f"/bills/{bid}/confirm", headers=auth, json=bad)).status_code == 422
