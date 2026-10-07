@@ -6,6 +6,7 @@ from sqlalchemy import func, or_, select
 
 from app.api.deps import CurrentUser, SessionDep, get_owned
 from app.core.categories import Category
+from app.core.payment_methods import PaymentMethod
 from app.models import Expense
 from app.schemas.common import resolve_date
 from app.schemas.expenses import ExpenseIn, ExpenseOut, ExpenseUpdate
@@ -32,7 +33,8 @@ async def create_expense(body: ExpenseIn, user: CurrentUser, session: SessionDep
 async def list_expenses(
     user: CurrentUser, session: SessionDep, response: Response,
     date_from: dt.date | None = None, date_to: dt.date | None = None,
-    category: Category | None = None, source: str | None = None, q: str | None = None,
+    category: Category | None = None, payment_method: PaymentMethod | None = None,
+    source: str | None = None, q: str | None = None,
     limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0),
 ):
     cond = [Expense.user_id == user.id]
@@ -42,6 +44,8 @@ async def list_expenses(
         cond.append(Expense.expense_date_ad <= date_to)
     if category:
         cond.append(Expense.category == category.value)
+    if payment_method:
+        cond.append(Expense.payment_method == payment_method.value)
     if source:
         cond.append(Expense.source == source)
     if q:
