@@ -81,6 +81,8 @@ class PrizeHandoffOut(BaseModel):
     portal_url: str
 
 
-class PrizeMarkSubmittedIn(BaseModel):
-    status: Literal["submitted"]
+class PrizeEnrollmentPatchIn(BaseModel):
+    """"submitted": the user finished the portal form. "dismissed": they won't submit it."""
+
+    status: Literal["submitted", "dismissed"]
     prize_coupon_number: str | None = Field(default=None, min_length=1, max_length=12)
