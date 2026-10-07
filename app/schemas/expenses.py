@@ -11,8 +11,9 @@ from app.schemas.common import ORM, Amount, resolve_date
 
 
 class ExpenseBill(BaseModel):
-    """Tax-invoice details for a manual expense. The vendor name, bill date, total and
-    payment method come from the expense itself (merchant, date, amount, payment_method)."""
+    """Tax-invoice details for an expense. For a manual expense the vendor name, bill date,
+    total and payment method come from the expense itself (merchant, date, amount,
+    payment_method); a scanned bill keeps its own."""
 
     vendor_pan: str | None = Field(default=None, max_length=20)
     bill_number: str | None = Field(default=None, max_length=100)

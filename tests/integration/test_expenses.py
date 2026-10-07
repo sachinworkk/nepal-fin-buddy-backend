@@ -1,3 +1,8 @@
+import datetime as dt
+from decimal import Decimal
+
+from app.core.security import decode_access_token
+from app.models import Bill, Expense
 
 
 def exp(**kw):
@@ -106,3 +111,36 @@ async def test_no_bill_without_details(client, auth):
     assert r.json()["bill"] is None and r.json()["bill_id"] is None
     assert (await client.post("/expenses", headers=auth, json=exp(
         bill={**BILL, "vat_amount": "1.234"}))).status_code == 422
+
+
+async def test_scanned_bill_details_editable(client, auth, other_auth, db):
+    user = decode_access_token(auth["Authorization"].split()[1])
+    bill = Bill(user_id=user, status="confirmed", vendor_name="Scanned Mart",
+                total_amount=Decimal("1130.00"), bill_date_ad=dt.date(2026, 9, 1),
+                vat_amount=Decimal("130.00"))
+    exp_row = Expense(user_id=user, amount=Decimal("1130.00"), category="groceries",
+                      merchant="Scanned Mart", expense_date_ad=dt.date(2026, 9, 1),
+                      source="bill", bill=bill)
+    db.add(exp_row)
+    await db.commit()
+    eid = str(exp_row.id)
+
+    assert (await client.patch(f"/expenses/{eid}", headers=other_auth,
+                               json={"bill": {"vendor_pan": "301234567"}})).status_code == 404
+    r = await client.patch(f"/expenses/{eid}", headers=auth, json={
+        "amount": "1200.00",
+        "bill": {"vendor_pan": "301234567", "bill_number": "INV-7", "vat_amount": "130.00"},
+    })
+    assert r.status_code == 200, r.text
+    b = r.json()["bill"]
+    assert r.json()["bill_id"] == str(bill.id)
+    assert (b["vendor_pan"], b["bill_number"], b["vat_amount"]) == ("301234567", "INV-7", "130.00")
+    # The scanned vendor and total stay as scanned; only the expense amount changed.
+    assert (b["vendor_name"], b["total_amount"]) == ("Scanned Mart", "1130.00")
+    assert r.json()["amount"] == "1200.00"
+
+    # Clearing the details empties the fields but keeps the scanned bill.
+    r = await client.patch(f"/expenses/{eid}", headers=auth, json={"bill": None})
+    assert r.status_code == 200, r.text
+    assert r.json()["bill_id"] == str(bill.id)
+    assert r.json()["bill"]["bill_number"] is None and r.json()["bill"]["vat_amount"] is None
