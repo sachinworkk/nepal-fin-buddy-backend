@@ -1,7 +1,7 @@
 import datetime as dt
 import uuid
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Query, Response, status
 from sqlalchemy import func, or_, select
 
 from app.api.deps import CurrentUser, SessionDep, get_owned
@@ -30,10 +30,6 @@ async def _set_bill_details(session, exp: Expense, details: ExpenseBill | None) 
 def _set_scanned_bill_details(exp: Expense, details: ExpenseBill | None) -> None:
     """Fill in or correct a scanned bill's tax-invoice details. The bill itself is never
     removed here, and its vendor, total and date stay as scanned."""
-    if exp.bill is None:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "This expense's scanned bill no longer exists"
-        )
     for k, v in (details or ExpenseBill()).model_dump().items():
         setattr(exp.bill, k, None if v == "" else v)
 
@@ -108,9 +104,11 @@ async def update_expense(
     exp = await get_owned(session, Expense, expense_id, user)
     data = body.model_dump(exclude_unset=True, exclude={"bill"})
     if "bill" in body.model_fields_set:
-        if exp.source == "bill":
+        if exp.source == "bill" and exp.bill is not None:
             _set_scanned_bill_details(exp, body.bill)
         else:
+            if exp.source == "bill" and body.bill is not None and not body.bill.is_empty():
+                exp.source = "manual"  # its scanned bill was deleted; the new bill is manual
             await _set_bill_details(session, exp, body.bill)
     date_ad, date_bs = data.pop("expense_date", None), data.pop("expense_date_bs", None)
     if date_ad is not None or date_bs is not None:

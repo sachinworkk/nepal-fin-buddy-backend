@@ -144,3 +144,32 @@ async def test_scanned_bill_details_editable(client, auth, other_auth, db):
     assert r.status_code == 200, r.text
     assert r.json()["bill_id"] == str(bill.id)
     assert r.json()["bill"]["bill_number"] is None and r.json()["bill"]["vat_amount"] is None
+
+
+async def test_bill_details_after_scanned_bill_deleted(client, auth, db):
+    user = decode_access_token(auth["Authorization"].split()[1])
+    bill = Bill(user_id=user, status="confirmed", vendor_name="Scanned Mart",
+                total_amount=Decimal("1130.00"), bill_date_ad=dt.date(2026, 9, 1))
+    exp_row = Expense(user_id=user, amount=Decimal("1130.00"), category="groceries",
+                      merchant="Scanned Mart", expense_date_ad=dt.date(2026, 9, 1),
+                      payment_method="cash", source="bill", bill=bill)
+    db.add(exp_row)
+    await db.commit()
+    eid, bid = str(exp_row.id), str(bill.id)
+    assert (await client.delete(f"/bills/{bid}", headers=auth)).status_code == 204
+    r = await client.get(f"/expenses/{eid}", headers=auth)
+    assert r.json()["source"] == "bill" and r.json()["bill_id"] is None
+
+    # Clearing details on an expense with no bill left is a no-op.
+    r = await client.patch(f"/expenses/{eid}", headers=auth, json={"bill": None})
+    assert r.status_code == 200, r.text
+    assert r.json()["source"] == "bill" and r.json()["bill"] is None
+
+    # Adding details creates a new image-less bill synced from the expense; it is now manual.
+    r = await client.patch(f"/expenses/{eid}", headers=auth,
+                           json={"bill": {"vendor_pan": "301234567", "bill_number": "INV-8"}})
+    assert r.status_code == 200, r.text
+    e = r.json()
+    assert e["source"] == "manual" and e["bill_id"] not in (None, bid)
+    assert (e["bill"]["vendor_pan"], e["bill"]["bill_number"]) == ("301234567", "INV-8")
+    assert (e["bill"]["vendor_name"], e["bill"]["total_amount"]) == ("Scanned Mart", "1130.00")
