@@ -79,13 +79,6 @@ async def test_upload_creates_bill_and_extraction(client, auth, fake_llm, db):
     assert body["status"] == "extracted"
     assert [i["description"] for i in body["items"]] == ["Rice 25kg"]
 
-    # idempotent resubmit: same bytes -> same bill, no second LLM call
-    r2 = await client.post("/bills/upload", headers=auth,
-                           files={"file": ("again.png", png, "image/png")})
-    assert r2.status_code == 201
-    assert r2.json()["id"] == body["id"]
-    assert len(fake_llm) == 1
-
 
 async def test_upload_rejects_bad_mime_and_oversize(client, auth, fake_llm):
     r = await client.post("/bills/upload", headers=auth,

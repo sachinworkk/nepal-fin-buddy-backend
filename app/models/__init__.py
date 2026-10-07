@@ -90,7 +90,6 @@ class Bill(Base):
     vat_amount: Mapped[Decimal | None] = mapped_column(Money)
     total_amount: Mapped[Decimal | None] = mapped_column(Money)
     image_path: Mapped[str | None] = mapped_column(String(500))
-    image_sha256: Mapped[str | None] = mapped_column(String(64), index=True)
     payment_method: Mapped[str | None] = mapped_column(
         String(10), ForeignKey("payment_methods.code")
     )
