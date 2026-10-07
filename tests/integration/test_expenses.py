@@ -55,6 +55,10 @@ async def test_list_filters_and_total(client, auth):
     r = await client.get("/expenses", headers=auth, params={"limit": 1, "offset": 1})
     assert len(r.json()) == 1 and r.headers["X-Total-Count"] == "3"
     assert (await client.get("/expenses", headers=auth, params={"limit": 500})).status_code == 422
+    await client.post("/expenses", headers=auth, json=exp(expense_date="2026-09-06", payment_method="qr"))
+    r = await client.get("/expenses", headers=auth, params={"payment_method": "qr"})
+    assert len(r.json()) == 1 and r.headers["X-Total-Count"] == "1"
+    assert (await client.get("/expenses", headers=auth, params={"payment_method": "bitcoin"})).status_code == 422
 
 
 async def test_user_isolation(client, auth, other_auth):
