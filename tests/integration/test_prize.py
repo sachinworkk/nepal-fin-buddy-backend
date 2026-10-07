@@ -265,3 +265,100 @@ async def test_bill_prize_enrolled_flag(client, portal, auth, other_auth, db):
                                        bill_number="BILL-22")
     assert (await client.get(f"/bills/{other_bill.id}", headers=other_auth)
             ).json()["prize_enrolled"] is False
+
+
+def handoff_body(bill_id: str, **kw) -> dict:
+    base = {"bill_id": bill_id, "name": "Ram Bahadur", "address": "Kathmandu",
+            "mobile_number": "9801234567"}
+    return {**base, **kw}
+
+
+async def test_eligible_lists_only_valid_unenrolled_bills(client, portal, auth, db):
+    user = await _user_id(auth)
+    good = await _confirmed_bill(db, user)
+    await _confirmed_bill(db, user, bill_number="BILL-BADPAN", vendor_pan="12345")
+    await _confirmed_bill(db, user, bill_number="BILL-NOAMT", total_amount=None)
+    await _confirmed_bill(db, user, bill_number="BILL-UNCONF", status="extracted")
+    taken = await _confirmed_bill(db, user, bill_number="BILL-TAKEN")
+    assert (await client.post("/prize/enrollments/handoff", headers=auth,
+                              json=handoff_body(str(taken.id)))).status_code == 200
+
+    r = await client.get("/prize/eligible", headers=auth)
+    assert r.status_code == 200, r.text
+    rows = r.json()
+    assert [x["bill_id"] for x in rows] == [str(good.id)]
+    assert rows[0]["fiscal_year_code"] == "2083-84"
+    assert rows[0]["fiscal_year_status"] == "ACTIVE"
+    assert rows[0]["days_left"] >= 0
+
+
+async def test_eligible_isolated_per_user(client, portal, auth, other_auth, db):
+    await _confirmed_bill(db, await _user_id(auth))
+    assert (await client.get("/prize/eligible", headers=other_auth)).json() == []
+
+
+async def test_handoff_creates_row_and_is_idempotent(client, portal, auth, db):
+    bill = await _confirmed_bill(db, await _user_id(auth))
+    r = await client.post("/prize/enrollments/handoff", headers=auth,
+                          json=handoff_body(str(bill.id)))
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["portal_url"] == get_settings().prize_portal_url
+    assert out["fields"]["seller_pan_no"] == "123456789"
+    assert out["fields"]["billed_total_amount"] == "2500.00"
+    assert out["fields"]["mobile_number"] == "9801234567"
+
+    again = await client.post("/prize/enrollments/handoff", headers=auth,
+                              json=handoff_body(str(bill.id), address="Lalitpur"))
+    assert again.json()["enrollment_id"] == out["enrollment_id"]
+    row = (await db.scalars(select(PrizeEnrollment))).one()
+    assert row.status == "handed_off" and row.address == "Lalitpur"
+    assert (await client.get(f"/bills/{bill.id}", headers=auth)).json()["prize_enrolled"] is True
+
+
+async def test_handoff_validation(client, portal, auth, db):
+    user = await _user_id(auth)
+    good = await _confirmed_bill(db, user)
+    r = await client.post("/prize/enrollments/handoff", headers=auth,
+                          json=handoff_body(str(good.id), mobile_number="1234567890"))
+    assert r.status_code == 422 and "mobile_number" in r.json()["detail"]
+    unconfirmed = await _confirmed_bill(db, user, bill_number="B-2", status="extracted")
+    r = await client.post("/prize/enrollments/handoff", headers=auth,
+                          json=handoff_body(str(unconfirmed.id)))
+    assert r.status_code == 409
+
+
+async def test_mark_submitted_flow(client, portal, auth, other_auth, db):
+    bill = await _confirmed_bill(db, await _user_id(auth))
+    eid = (await client.post("/prize/enrollments/handoff", headers=auth,
+                             json=handoff_body(str(bill.id)))).json()["enrollment_id"]
+
+    assert (await client.patch(f"/prize/enrollments/{eid}", headers=other_auth,
+                               json={"status": "submitted"})).status_code == 404
+    r = await client.patch(f"/prize/enrollments/{eid}", headers=auth,
+                           json={"status": "submitted", "prize_coupon_number": "ABC123456789"})
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "submitted"
+    assert r.json()["prize_coupon_number"] == "ABC123456789"
+
+    # Already submitted: no re-marking, no new hand-off, and it leaves the eligible list.
+    assert (await client.patch(f"/prize/enrollments/{eid}", headers=auth,
+                               json={"status": "submitted"})).status_code == 409
+    assert (await client.post("/prize/enrollments/handoff", headers=auth,
+                              json=handoff_body(str(bill.id)))).status_code == 409
+    assert (await client.get("/prize/eligible", headers=auth)).json() == []
+    assert (await client.patch(f"/prize/enrollments/{eid}", headers=auth,
+                               json={"status": "failed"})).status_code == 422
+
+
+async def test_live_mode_direct_submit_refused(client, portal, auth, db, monkeypatch):
+    monkeypatch.setattr(get_settings(), "prize_mode", "live")
+    assert (await client.get("/prize/config")).json()["submission_mode"] == "handoff"
+    bill = await _confirmed_bill(db, await _user_id(auth))
+    r = await client.post("/prize/enrollments", headers=auth, json=body(str(bill.id)))
+    assert r.status_code == 409 and "handoff" in r.json()["detail"]
+    assert (await db.scalars(select(PrizeEnrollment))).first() is None
+
+
+async def test_config_submission_mode_direct_in_test(client):
+    assert (await client.get("/prize/config")).json()["submission_mode"] == "direct"
