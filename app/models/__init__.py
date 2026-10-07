@@ -152,8 +152,10 @@ class Expense(Base):
     bill_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("bills.id", ondelete="SET NULL")
     )
+    bill: Mapped[Bill | None] = relationship(lazy="selectin")
     created_at: Mapped[dt.datetime] = _now()
-    # A bill produces at most one expense (the confirm step); manual expenses have no bill.
+    # A bill produces at most one expense: the confirm step, or a manual expense entered
+    # with bill details (an image-less bill created alongside it).
     __table_args__ = (
         Index("uq_expenses_bill_id", "bill_id", unique=True,
               postgresql_where=bill_id.is_not(None)),
