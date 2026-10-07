@@ -15,7 +15,15 @@ from app.models import Bill, PrizeEnrollment
 from app.prize.client import PrizeError, fiscal_years, get_prize_client, submit_enrollment
 from app.prize.turnstile import TurnstileError, verify_turnstile
 from app.prize.validation import validate_fields
-from app.schemas.prize import PrizeConfigOut, PrizeEnrollmentIn, PrizeEnrollmentOut
+from app.schemas.prize import (
+    PrizeConfigOut,
+    PrizeEligibleOut,
+    PrizeEnrollmentIn,
+    PrizeEnrollmentOut,
+    PrizeHandoffIn,
+    PrizeHandoffOut,
+    PrizeMarkSubmittedIn,
+)
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/prize", tags=["prize"])
@@ -34,20 +42,26 @@ _last_submit_at: dict[uuid.UUID, float] = {}
 @router.get("/config", response_model=PrizeConfigOut)
 async def prize_config() -> PrizeConfigOut:
     """Public bits the frontend needs to render the Turnstile widget."""
+    s = get_settings()
     return PrizeConfigOut(
-        turnstile_sitekey=get_settings().prize_turnstile_sitekey, payment_methods=["Cash"],
+        turnstile_sitekey=s.prize_turnstile_sitekey, payment_methods=["Cash"],
+        submission_mode="handoff" if s.prize_mode == "live" else "direct",
     )
 
 
-@router.get("/fiscal-years")
-async def prize_fiscal_years(user: CurrentUser, http: PrizeClient) -> dict:
-    """Proxy the portal's fiscal-year list (one hour in-memory cache)."""
+async def _cached_fiscal_years(http: httpx.AsyncClient) -> dict:
     global _fiscal_cache, _fiscal_cached_at
     now = time.monotonic()
     if _fiscal_cache is None or now - _fiscal_cached_at > _FISCAL_TTL_SECONDS:
         _fiscal_cache = await fiscal_years(http)
         _fiscal_cached_at = now
     return _fiscal_cache
+
+
+@router.get("/fiscal-years")
+async def prize_fiscal_years(user: CurrentUser, http: PrizeClient) -> dict:
+    """Proxy the portal's fiscal-year list (one hour in-memory cache)."""
+    return await _cached_fiscal_years(http)
 
 
 def _check_form_started_at(form_started_at: int) -> None:
@@ -114,6 +128,11 @@ async def create_enrollment(
     body: PrizeEnrollmentIn, user: CurrentUser, session: SessionDep, http: PrizeClient,
     request: Request,
 ) -> PrizeEnrollmentOut:
+    if get_settings().prize_mode == "live":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Live submission isn't supported - use /prize/enrollments/handoff",
+        )
     _check_form_started_at(body.form_started_at)
     remoteip = request.client.host if request.client else None
     try:
@@ -168,6 +187,113 @@ async def create_enrollment(
     row.duplicate = bool(resp.get("duplicate"))
     row.ird_response = resp
     session.add(row)
+    await session.commit()
+    await session.refresh(row)
+    return row
+
+
+async def _find_active(
+    session, user, key: tuple[str, str, dt.date], *statuses: str
+) -> PrizeEnrollment | None:
+    """The user's enrollment for the same PAN + bill number + date in one of `statuses`."""
+    pan, number, date = key
+    return await session.scalar(select(PrizeEnrollment).where(
+        PrizeEnrollment.user_id == user.id,
+        PrizeEnrollment.seller_pan_no == pan,
+        PrizeEnrollment.bill_number == number,
+        PrizeEnrollment.bill_date == date,
+        PrizeEnrollment.status.in_(statuses),
+    ))
+
+
+@router.get("/eligible", response_model=list[PrizeEligibleOut])
+async def list_eligible(user: CurrentUser, session: SessionDep, http: PrizeClient):
+    """Confirmed bills that pass the portal's bill checks and aren't already enrolled."""
+    taken = {
+        (r.seller_pan_no, r.bill_number, r.bill_date)
+        for r in await session.scalars(select(PrizeEnrollment).where(
+            PrizeEnrollment.user_id == user.id,
+            PrizeEnrollment.status.in_(("submitted", "handed_off")),
+        ))
+    }
+    bills = await session.scalars(select(Bill).where(
+        Bill.user_id == user.id, Bill.status == "confirmed",
+        Bill.vendor_pan.is_not(None), Bill.bill_number.is_not(None),
+        Bill.bill_date_ad.is_not(None), Bill.total_amount.is_not(None),
+    ).order_by(Bill.bill_date_ad.desc()))
+
+    try:
+        years = (await _cached_fiscal_years(http)).get("fiscal_years") or []
+    except PrizeError:
+        years = []  # the list is still useful without deadlines
+
+    today = dt.date.today()
+    out = []
+    for b in bills:
+        if (b.vendor_pan, b.bill_number, b.bill_date_ad) in taken:
+            continue
+        if validate_fields(
+            bill_number=b.bill_number, seller_pan_no=b.vendor_pan, bill_date=b.bill_date_ad,
+            billed_total_amount=float(b.total_amount), payment_method="Cash",
+            name="Placeholder", address="Placeholder", mobile_number="9800000000",
+        ):
+            continue
+        fy = next((y for y in years
+                   if y["start_date"] <= b.bill_date_ad.isoformat() <= y["end_date"]), None)
+        active = fy is not None and fy.get("status") == "ACTIVE"
+        out.append(PrizeEligibleOut(
+            bill_id=b.id, vendor_name=b.vendor_name, seller_pan_no=b.vendor_pan,
+            bill_number=b.bill_number, bill_date=b.bill_date_ad,
+            billed_total_amount=b.total_amount,
+            fiscal_year_code=fy["fiscal_year_code"] if fy else None,
+            fiscal_year_status=fy.get("status") if fy else None,
+            days_left=max(0, (dt.date.fromisoformat(fy["end_date"]) - today).days)
+            if active else None,
+        ))
+    return out
+
+
+@router.post("/enrollments/handoff", response_model=PrizeHandoffOut)
+async def create_handoff(
+    body: PrizeHandoffIn, user: CurrentUser, session: SessionDep,
+) -> PrizeHandoffOut:
+    """Prefill a bill's portal fields for the user to submit on the IRD portal themselves."""
+    fields, bill_id, bill_date, amount = await _resolve_fields(session, body, user)
+    key = (fields["seller_pan_no"], fields["bill_number"], bill_date)
+    if await _find_active(session, user, key, "submitted"):
+        raise HTTPException(status.HTTP_409_CONFLICT, "This bill has already been submitted")
+
+    row = await _find_active(session, user, key, "handed_off")
+    if row is None:
+        row = PrizeEnrollment(
+            user_id=user.id, bill_id=bill_id, seller_pan_no=key[0], bill_number=key[1],
+            bill_date=bill_date, billed_total_amount=amount,
+            payment_method=fields["payment_method"], status="handed_off",
+            form_started_at=int(time.time() * 1000),
+        )
+    row.name, row.address = fields["name"], fields["address"]
+    row.mobile_number = fields["mobile_number"]
+    row.company_website = fields["company_website"] or None
+    session.add(row)
+    await session.commit()
+    await session.refresh(row)
+    return PrizeHandoffOut(
+        enrollment_id=row.id, fields=fields, portal_url=get_settings().prize_portal_url,
+    )
+
+
+@router.patch("/enrollments/{enrollment_id}", response_model=PrizeEnrollmentOut)
+async def mark_submitted(
+    enrollment_id: uuid.UUID, body: PrizeMarkSubmittedIn, user: CurrentUser, session: SessionDep,
+):
+    """The user finished the portal form; optionally record the coupon number they got."""
+    row = await get_owned(session, PrizeEnrollment, enrollment_id, user)
+    if row.status != "handed_off":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Only a handed-off bill can be marked submitted"
+        )
+    row.status = "submitted"
+    row.prize_coupon_number = body.prize_coupon_number
     await session.commit()
     await session.refresh(row)
     return row

@@ -76,9 +76,24 @@ uv run uvicorn mock_prize.app:app --port 8002
 
 Customers submit their **cash bills** to IRD's taxpayer incentive lottery. The
 portal API is public (no credentials) but every submission must carry a fresh
-Cloudflare **Turnstile** token and a `form_started_at` timestamp.
+Cloudflare **Turnstile** token and a `form_started_at` timestamp. IRD's Turnstile
+widget only works on IRD's own hostnames (error 110200 elsewhere), so there are
+two modes, reported by `GET /prize/config` as `submission_mode`:
 
-Frontend flow:
+- `direct` (`PRIZE_MODE=test`, the local mock): the flow below.
+- `handoff` (`PRIZE_MODE=live`): the app prefills, the user submits on the portal.
+  1. `GET /prize/eligible` — confirmed bills that pass the portal's checks and
+     aren't enrolled yet, with the fiscal year and `days_left` (null if the portal
+     is unreachable).
+  2. `POST /prize/enrollments/handoff` (`bill_id`, name, address, mobile) — returns
+     the prefilled `fields` and `portal_url`; records a `handed_off` row
+     (idempotent per bill; `409` if already submitted).
+  3. `PATCH /prize/enrollments/{id}` with `{"status": "submitted",
+     "prize_coupon_number": "..."}` once the user has finished on the portal.
+
+  `POST /prize/enrollments` returns `409` in live mode.
+
+Direct-mode frontend flow:
 
 1. `GET /prize/config` — Turnstile sitekey + supported payment methods (`Cash`).
 2. Render the Turnstile widget with the sitekey; record `form_started_at`
