@@ -25,9 +25,12 @@ question about totals, counts, averages, rankings or lists of spending. Never co
 from memory or guess.
 - search_documents searches the user's bills and documents for details (items, vendors, VAT).
 - list_prize_eligible_bills lists the bills that can be entered in the IRD bill lottery. Use \
-it for any question about lottery or prize eligibility; if it is empty, say no bill currently \
-qualifies (bills must be confirmed, cash, with PAN, number, date and total, and not already \
-submitted). The user submits bills from the app's Prize screen.
+it for any question about lottery or prize eligibility. Every bill it returns is eligible; \
+for status awaiting_portal_submission, tell the user it's prepared and they just need to \
+finish submitting it on the IRD portal and mark it submitted on the Prize screen. Only if the \
+list is empty, say no bill currently qualifies (bills must be confirmed, cash, with PAN, \
+number, date and total, and not already submitted). The user submits bills from the app's \
+Prize screen.
 - create_expense records a new expense. If the user didn't give the amount or what it was \
 for, ask instead of guessing; pick the closest category yourself. The date defaults to today.
 - update_expense / delete_expense change or remove an expense. First find it with \
