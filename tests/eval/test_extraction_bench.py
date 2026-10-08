@@ -1,10 +1,8 @@
 """Extraction benchmark: run the real extractor over labelled bill images and
 score field-by-field with tests/eval/extraction_scorer.py (no judge LLM).
 
-STATUS: the extractor (step 5, POST /bills/upload) does not exist in the app
-yet, so this suite skips with a clear message until it lands. Once
-app/extraction.py (or equivalent) is built, implement run_extractor() below by
-calling it; nothing else needs to change.
+Scores header fields, amounts, payment_method and line items against the
+hand-verified labels. All bills are extracted in a single event loop.
 
 Run with:  uv run pytest tests/eval/test_extraction_bench.py -m live_llm -q
 Fixtures:  tests/eval/fixtures/labels.json + images in fixtures/bills/.
@@ -27,16 +25,22 @@ def load_labels() -> list[dict]:
     return json.loads((FIXTURES / "labels.json").read_text())["bills"]
 
 
-def run_extractor(image_path: Path, mime_type: str) -> dict:
-    """Call the app's real bill extraction and return the extracted dict."""
+def run_extractors(images: list[tuple[Path, str]]) -> list[dict]:
+    """Call the app's real bill extraction for each (path, mime) and return the dicts."""
     import asyncio
 
-    from app.db import SessionLocal
+    from app.db import SessionLocal, engine
     from app.extraction import extract_bill
 
-    async def run() -> dict:
-        async with SessionLocal() as session:
-            return await extract_bill(session, None, image_path.read_bytes(), mime_type)
+    async def run() -> list[dict]:
+        out = []
+        try:
+            for path, mime in images:
+                async with SessionLocal() as session:
+                    out.append(await extract_bill(session, None, path.read_bytes(), mime))
+        finally:
+            await engine.dispose()
+        return out
 
     return asyncio.run(run())
 
@@ -44,11 +48,10 @@ def run_extractor(image_path: Path, mime_type: str) -> dict:
 @pytest.fixture(scope="module")
 def labelled_bills():
     bills = load_labels()
-    real = [(b, FIXTURES / "bills" / b["image"])
-            for b in bills if (FIXTURES / "bills" / b["image"]).exists()]
-    if not real:
-        pytest.skip("no fixture images present", allow_module_level=True)
-    return real
+    paths = [(b, FIXTURES / "bills" / b["image"]) for b in bills]
+    missing = [p.name for _, p in paths if not p.exists()]
+    assert not missing, f"labels.json references missing images: {missing}"
+    return paths
 
 
 @pytest.fixture(scope="module")
@@ -56,12 +59,11 @@ def runs(labelled_bills):
     s = get_settings()
     if not s.openrouter_api_key:
         pytest.skip("OPENROUTER_API_KEY not set", allow_module_level=True)
-    out = []
-    for labels, img in labelled_bills:
-        mime = "application/pdf" if img.suffix == ".pdf" else "image/jpeg"
-        out.append({"bill_id": labels["id"],
-                    **score_extraction(labels["expected"], run_extractor(img, mime))})
-    return out
+    mimes = {".pdf": "application/pdf", ".png": "image/png"}
+    extracted = run_extractors([(img, mimes.get(img.suffix, "image/jpeg"))
+                                for _, img in labelled_bills])
+    return [{"bill_id": labels["id"], **score_extraction(labels["expected"], got)}
+            for (labels, _), got in zip(labelled_bills, extracted, strict=True)]
 
 
 @pytest.mark.live_llm

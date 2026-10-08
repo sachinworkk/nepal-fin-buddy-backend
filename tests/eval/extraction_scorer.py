@@ -8,6 +8,10 @@ No LLM anywhere — every comparison is a rule. Field types have different rules
 - pan: digits-only exact compare (tolerates stray spaces/dashes)
 - text: case/space/punctuation-light compare ("Bhatbhateni Supermarket Pvt. Ltd."
   matches "bhatbhateni supermarket")
+- enum: payment_method, lower-cased exact compare
+- items: every expected item {description, amount} must match a distinct extracted
+  item (amount within tolerance, description by the text rule) and the counts must
+  be equal; order is ignored
 - optional fields: an extracted None matches an empty ground truth; a wrong
   non-empty value is scored as a miss.
 
@@ -32,6 +36,8 @@ FIELD_TYPES = {
     "taxable_amount": "amount",
     "vat_amount": "amount",
     "total_amount": "amount",
+    "payment_method": "enum",
+    "items": "items",
 }
 
 _RE_SEPS = re.compile(r"[./-]")
@@ -90,6 +96,8 @@ def _normalise(field: str, value):
         return _ad(value)
     if t == "pan":
         return _pan(value)
+    if t == "enum":
+        return str(value).strip().lower() or None if value is not None else None
     return _text(value)
 
 
@@ -100,7 +108,38 @@ def _text_match(norm: str | None, exp: str | None) -> bool:
     return bool(norm and exp and (norm in exp or exp in norm))
 
 
+def _items_match(expected: list, actual: list) -> bool:
+    if len(expected) != len(actual):
+        return False
+    pool = list(actual)
+    for exp in expected:
+        exp_amt, exp_desc = _amount(exp.get("amount")), _text(exp.get("description"))
+        for cand in pool:
+            amt_ok = exp_amt is None or (
+                (a := _amount(cand.get("amount"))) is not None
+                and abs(a - exp_amt) <= AMOUNT_TOLERANCE)
+            desc_ok = exp_desc is None or _text_match(_text(cand.get("description")), exp_desc)
+            if amt_ok and desc_ok:
+                pool.remove(cand)
+                break
+        else:
+            return False
+    return True
+
+
+def _score_items(expected, actual) -> dict:
+    if not expected:
+        return {"status": "correct" if not actual else "miss",
+                "expected": expected, "actual": actual}
+    if not actual:
+        return {"status": "missing", "expected": expected, "actual": actual}
+    ok = _items_match(expected, actual)
+    return {"status": "correct" if ok else "miss", "expected": expected, "actual": actual}
+
+
 def score_field(field: str, expected, actual) -> dict:
+    if FIELD_TYPES.get(field) == "items":
+        return _score_items(expected, actual)
     norm = _normalise(field, actual)
     exp = _normalise(field, expected)
     if exp is None:
