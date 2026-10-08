@@ -62,4 +62,17 @@ def test_parse_extraction_maps_payment_method():
         return parse_extraction(json.dumps({"payment_method": v}))["payment_method"]
 
     assert pm("Cash") == "cash" and pm("eSewa") == "qr" and pm("Visa") == "card"
+    assert pm("Paid via eSewa") == "qr" and pm("Fonepay QR") == "qr" and pm("VISA debit") == "card"
     assert pm("barter") is None and pm(None) is None
+
+
+def test_parse_extraction_validates_category_guess():
+    import json
+
+    from app.extraction import parse_extraction
+
+    def cat(v):
+        return parse_extraction(json.dumps({"category": v}))["category"]
+
+    assert cat("Dining") == "dining" and cat("groceries") == "groceries"
+    assert cat("fuel") is None and cat(None) is None

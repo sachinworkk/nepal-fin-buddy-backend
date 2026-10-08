@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import llm
 from app.config import get_settings
+from app.core.categories import Category
 from app.core.payment_methods import PaymentMethod
 from app.llm import LlmError
 
@@ -39,8 +40,12 @@ currency symbols
   "taxable_amount": string|null,
   "vat_amount": string|null,
   "total_amount": string|null,
-  "payment_method": "cash"|"card"|"qr"|"cheque"|null,  // how the bill was paid, \
-only if printed (e.g. "Cash", "Visa", "eSewa"); else null
+  "payment_method": "cash"|"card"|"qr"|"cheque"|null,  // how the bill was paid: \
+printed words ("Cash", "Visa") or a payment logo/QR code on the bill (eSewa, Khalti, \
+Fonepay, a bank QR -> "qr"; Visa/Mastercard -> "card"); null if there is no sign
+  "category": "groceries"|"dining"|"transport"|"utilities"|"rent"|"medical"|\
+"education"|"shopping"|"entertainment"|"fees"|"gifts"|"other",  // your best guess \
+from the vendor and items; "other" if unclear
   "items": [ { "description": string, "quantity": string|null,
                "unit_price": string|null, "amount": string|null } ],
   "ocr_text": string                  // your full plain-text transcription of \
@@ -52,12 +57,13 @@ Rules:
 "correct" them.
 - Amounts: strip currency symbols (रू / Rs / NPR) and thousand separators, keep \
 decimals.
-- If a field is not printed, use null. Do not guess."""
+- If a field is not printed, use null. Do not guess, except payment_method (logos/QR \
+count) and category (always infer one)."""
 
 _KEYS = {
     "vendor_name", "vendor_pan", "bill_number", "bill_date_bs", "bill_date_ad",
     "subtotal", "discount", "taxable_amount", "vat_amount", "total_amount",
-    "payment_method", "items", "ocr_text",
+    "payment_method", "category", "items", "ocr_text",
 }
 _ITEM_KEYS = {"description", "quantity", "unit_price", "amount"}
 _OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
@@ -88,6 +94,7 @@ def _clean_num(value) -> str | None:
 
 _PAYMENT_ALIASES = {
     "check": "cheque", "esewa": "qr", "khalti": "qr", "fonepay": "qr", "wallet": "qr",
+    "connectips": "qr", "imepay": "qr", "qr": "qr",
     "credit card": "card", "debit card": "card", "visa": "card", "mastercard": "card",
 }
 
@@ -95,8 +102,17 @@ _PAYMENT_ALIASES = {
 def _clean_payment(value) -> str | None:
     """Map the printed payment method onto a PaymentMethod value; None when unrecognised."""
     s = (_clean(value) or "").lower()
-    s = _PAYMENT_ALIASES.get(s, s)
+    if s not in {m.value for m in PaymentMethod}:
+        # "Paid via eSewa", "Fonepay QR": fall back to a substring match on the aliases.
+        s = _PAYMENT_ALIASES.get(s) or next(
+            (v for k, v in _PAYMENT_ALIASES.items() if k in s), s)
     return s if s in {m.value for m in PaymentMethod} else None
+
+
+def _clean_category(value) -> str | None:
+    """The model's category guess if it is a valid Category value, else None."""
+    s = (_clean(value) or "").lower()
+    return s if s in {c.value for c in Category} else None
 
 
 def _clean_items(items) -> list[dict] | None:
@@ -131,6 +147,7 @@ def parse_extraction(text: str) -> dict:
     for k in ("subtotal", "discount", "taxable_amount", "vat_amount", "total_amount"):
         out[k] = _clean_num(out[k])
     out["payment_method"] = _clean_payment(out["payment_method"])
+    out["category"] = _clean_category(out["category"])
     out["items"] = _clean_items(raw.get("items"))
     out["ocr_text"] = _clean(raw.get("ocr_text"))
     return out

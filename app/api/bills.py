@@ -67,6 +67,7 @@ async def upload_bill(file: UploadFile, user: CurrentUser, session: SessionDep):
                     flag_count=len(flags), mime_type=file.content_type) as span:
         span.set(flags=",".join(sorted(str(f) for f in flags)))
     items = fields.pop("items") or []
+    suggested_category = fields.get("category")
     bill = Bill(
         user_id=user.id, image_path=str(path),
         mime_type=file.content_type, status="extracted",
@@ -82,13 +83,14 @@ async def upload_bill(file: UploadFile, user: CurrentUser, session: SessionDep):
 
     session.add(Extraction(
         bill_id=bill.id, extractor="llm_vision", model=get_settings().extraction_model,
-        prompt_version="v2",
+        prompt_version="v3",
         confidence=confidence,
         structured=json.loads(json.dumps(fields, default=str)),
         raw_output=json.dumps(fields, default=str),
         ocr_text=fields.get("ocr_text"),
     ))
     await session.commit()
+    bill.suggested_category = suggested_category  # transient: only the upload response has it
     return bill
 
 
