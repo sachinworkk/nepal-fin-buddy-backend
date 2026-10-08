@@ -139,14 +139,18 @@ def parse_extraction(text: str) -> dict:
 async def extract_bill(session: AsyncSession, user_id, data: bytes, mime_type: str) -> dict:
     """Run one extraction against the configured vision model. Returns cleaned fields."""
     s = get_settings()
-    b64 = base64.b64encode(data).decode()
+    data_url = f"data:{mime_type};base64,{base64.b64encode(data).decode()}"
+    if mime_type == "application/pdf":
+        # OpenRouter rejects PDFs sent as image_url; they need a "file" part.
+        doc_part = {"type": "file", "file": {"filename": "bill.pdf", "file_data": data_url}}
+    else:
+        doc_part = {"type": "image_url", "image_url": {"url": data_url}}
     resp = await llm._post(session, "extraction", user_id, "/chat/completions", {
         "model": s.extraction_model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": [
-                {"type": "image_url",
-                 "image_url": {"url": f"data:{mime_type};base64,{b64}"}},
+                doc_part,
                 {"type": "text", "text": "Extract this bill as JSON."},
             ]},
         ],

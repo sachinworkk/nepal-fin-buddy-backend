@@ -7,7 +7,7 @@ class Category(StrEnum):
     transport = "transport"
     utilities = "utilities"
     rent = "rent"
-    health = "health"
+    medical = "medical"
     education = "education"
     shopping = "shopping"
     entertainment = "entertainment"

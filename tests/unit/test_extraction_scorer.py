@@ -97,3 +97,24 @@ def test_format_report_orders_worst_first():
     # both 50%; tie broken alphabetically
     assert "total_amount" in lines[1] and "vat_amount" in lines[2]
     assert "50.0%" in report
+
+def test_payment_method_enum():
+    assert score_field("payment_method", "cash", "Cash")["status"] == "correct"
+    assert score_field("payment_method", "cash", "card")["status"] == "miss"
+    assert score_field("payment_method", None, None)["status"] == "correct"
+    assert score_field("payment_method", None, "qr")["status"] == "miss"
+    assert score_field("payment_method", "cash", None)["status"] == "missing"
+
+
+def test_items_order_insensitive_and_strict_on_count():
+    exp = [{"description": "Momo Platter", "amount": "756.63"},
+           {"description": "Water bottle", "amount": "48.67"}]
+    got = [{"description": "water bottle", "amount": "48.67"},
+           {"description": "Momo Platter", "amount": "756.63"}]
+    assert score_field("items", exp, got)["status"] == "correct"
+    assert score_field("items", exp, got[:1])["status"] == "miss"
+    assert score_field("items", exp, got + [{"description": "x", "amount": "1"}])["status"] == "miss"
+    assert score_field("items", exp, [{"description": "Momo Platter", "amount": "700"},
+                                      got[0]])["status"] == "miss"
+    assert score_field("items", exp, None)["status"] == "missing"
+    assert score_field("items", [], None)["status"] == "correct"

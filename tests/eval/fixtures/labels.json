@@ -1,74 +1,76 @@
 {
-  "description": "Ground-truth labels for the extraction benchmark. One entry per bill image in fixtures/bills/. The image file lives in tests/eval/fixtures/bills/; labels are the hand-verified values.",
+  "description": "Ground-truth labels for the extraction benchmark. One entry per bill image in fixtures/bills/, hand-verified against the image. Fields: header/amount fields, payment_method (cash|card|qr|cheque or null) and items ({description, amount}). A null/absent value means 'not printed'. Every entry must have its image present.",
   "bills": [
     {
-      "id": "EXAMPLE-bhatbhateni-receipt",
-      "image": "EXAMPLE-bhatbhateni-receipt.jpg",
-      "source": "photo of a Bhatbhateni thermal receipt",
-      "expected": {
-        "vendor_name": "Bhatbhateni Supermarket",
-        "vendor_pan": "601234567",
-        "bill_number": "BB-88991",
-        "bill_date_bs": "2083-05-02",
-        "bill_date_ad": "2026-08-18",
-        "subtotal": "6895.00",
-        "taxable_amount": "6895.00",
-        "vat_amount": "896.35",
-        "total_amount": "7791.35"
-      }
-    },
-    {
-      "id": "EXAMPLE-worldlink-invoice",
-      "image": "EXAMPLE-worldlink-invoice.pdf",
-      "source": "WorldLink monthly invoice PDF",
-      "expected": {
-        "vendor_name": "WorldLink Communications",
-        "vendor_pan": "302987654",
-        "bill_number": "WL-2083-05-3301",
-        "bill_date_bs": "2083-05-01",
-        "bill_date_ad": "2026-08-17",
-        "subtotal": "3500.00",
-        "taxable_amount": "3500.00",
-        "vat_amount": "455.00",
-        "total_amount": "3955.00"
-      }
-    },
-    {
-      "id": "EXAMPLE-qfx-cinema-ticket",
+      "id": "qfx-cinema-ticket",
       "image": "1.png",
-      "source": "tests/bills/1.png — QFX cinema e-ticket (Bhatbhateni Bhaktapur)",
+      "source": "tests/bills/1.png \u2014 QFX cinema e-ticket (Bhatbhateni Bhaktapur)",
       "expected": {
         "vendor_name": "QFX",
         "bill_date_ad": "2024-09-20",
         "subtotal": "880.00",
-        "vat_amount": "10.24",
-        "total_amount": "880.00"
+        "vat_amount": "101.24",
+        "total_amount": "880.00",
+        "payment_method": null,
+        "items": [
+          {
+            "description": "PLATINUM",
+            "amount": "880.00"
+          }
+        ]
       }
     },
     {
-      "id": "EXAMPLE-csnepal-invoice",
+      "id": "csnepal-invoice",
       "image": "2.png",
-      "source": "tests/bills/2.png — C.S. Nepal handwritten invoice",
+      "source": "tests/bills/2.png \u2014 C.S. Nepal handwritten invoice",
       "expected": {
         "vendor_name": "C.S. Nepal Pvt. Ltd.",
         "vendor_pan": "601176029",
         "bill_number": "203",
-        "bill_date_bs": "2082.05.02",
-        "bill_date_ad": "2025-08-18",
-        "subtotal": "6708.00",
-        "total_amount": "6708.00"
+        "bill_date_ad": null,
+        "subtotal": "6700.00",
+        "total_amount": "6700.00",
+        "payment_method": null,
+        "items": [
+          {
+            "description": "Hardisk 2TB",
+            "amount": "6700.00"
+          }
+        ],
+        "bill_date_bs": "2082-05-02"
       }
     },
     {
-      "id": "EXAMPLE-restaurant-crumpled",
+      "id": "restaurant-crumpled",
       "image": "scdgwcrq00q91.jpg",
-      "source": "tests/bills/scdgwcrq00q91.jpg — crumpled restaurant receipt",
+      "source": "tests/bills/scdgwcrq00q91.jpg \u2014 crumpled restaurant receipt",
       "expected": {
         "bill_date_ad": "2022-09-25",
         "subtotal": "1522.09",
         "taxable_amount": "1522.09",
         "vat_amount": "197.87",
-        "total_amount": "1720.00"
+        "total_amount": "1720.00",
+        "discount": "0.00",
+        "payment_method": "cash",
+        "items": [
+          {
+            "description": "Momo Platter",
+            "amount": "756.63"
+          },
+          {
+            "description": "Cappuchino",
+            "amount": "464.58"
+          },
+          {
+            "description": "Water bottle",
+            "amount": "48.67"
+          },
+          {
+            "description": "Cheese Ball",
+            "amount": "252.21"
+          }
+        ]
       }
     }
   ]
