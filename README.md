@@ -172,6 +172,8 @@ Integration tests need the Postgres container from step 3 running.
 | `PRIZE_MIN_FORM_AGE_SECONDS`, `PRIZE_MAX_FORM_AGE_SECONDS` | Allowed age of `form_started_at` |
 | `PRIZE_USER_SUBMIT_INTERVAL_SECONDS` | Minimum spacing between submissions per user |
 | `STORAGE_DIR` | Where uploaded documents are saved |
+| `MLFLOW_ENABLED`, `MLFLOW_TRACKING_URI`, `MLFLOW_EXPERIMENT` | Optional MLflow tracing (see [MLflow monitoring](#mlflow-monitoring)) |
+| `MLFLOW_LOG_CONTENT` | Also log chat query and answer text on `chat.turn` traces (default `false`) |
 
 ## MLflow monitoring
 
@@ -180,11 +182,28 @@ quality. Metadata only (model, tokens, latency, counts, scores); prompts and ans
 logged unless `MLFLOW_LOG_CONTENT=true`, which records the chat query and answer on the
 `chat.turn` trace. Off by default.
 
-```
-MLFLOW_ENABLED=true
-MLFLOW_TRACKING_URI=sqlite:///mlflow.db
-MLFLOW_EXPERIMENT=nepal-fin-buddy
-```
+### Run MLflow
 
-View traces with `uv run mlflow ui --backend-store-uri sqlite:///mlflow.db`. MLflow errors are
-logged as warnings and never fail a request.
+1. **Enable tracing** in `.env` (the `mlflow` package with the UI is in the dev dependency
+   group, so `uv sync` already installed it):
+
+   ```
+   MLFLOW_ENABLED=true
+   MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+   MLFLOW_EXPERIMENT=nepal-fin-buddy
+   ```
+
+2. **Start the API** as usual (see [Run locally](#run-locally)) and use the app: send chat
+   messages or scan a bill. Traces are written to `mlflow.db` in the project root.
+
+3. **Start the MLflow UI** in a second terminal, from the project root:
+
+   ```sh
+   uv run mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
+   ```
+
+4. Open <http://localhost:5000>, pick the `nepal-fin-buddy` experiment and use the **Traces**
+   tab to inspect `chat.turn` traces and bill-extraction quality scores.
+
+The tracking URI must be the same for the API and the UI, otherwise the UI shows no data.
+MLflow errors are logged as warnings and never fail a request.
