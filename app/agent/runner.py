@@ -71,10 +71,13 @@ def _text(message: dict) -> str:
 
 async def run_turn(session: AsyncSession, user_id: uuid.UUID, chat_session_id: uuid.UUID,
                    prompt: str | list, chunks: list[DocumentChunk],
-                   document_id: uuid.UUID | None = None) -> TurnResult:
+                   document_id: uuid.UUID | None = None,
+                   after_cancel: bool = False) -> TurnResult:
     """Run one agent invocation. `prompt` is the user's text, or a list of interruptResponse
     blocks when resuming after the user confirmed or cancelled pending actions. `chunks` is
-    extended with chunks found via search_documents so the caller can validate citations."""
+    extended with chunks found via search_documents so the caller can validate citations.
+    `after_cancel` stops edits/deletes from asking for confirmation again within this turn, so
+    cancelling is final instead of the model re-proposing the same change."""
     # Building the agent restores its snapshot through Strands' sync bridge; keep that off
     # the event loop.
     agent = await asyncio.to_thread(_build_agent, chat_session_id, dt.date.today())
@@ -83,7 +86,8 @@ async def run_turn(session: AsyncSession, user_id: uuid.UUID, chat_session_id: u
     model_id = get_settings().chat_model
     try:
         result = await agent.invoke_async(prompt, invocation_state={
-            "user_id": user_id, "document_id": document_id, "chunks": chunks, "audit": audit})
+            "user_id": user_id, "document_id": document_id, "chunks": chunks, "audit": audit,
+            "no_confirm": after_cancel})
     except Exception as e:
         log.warning("agent.invoke_failed", error=str(e)[:300])
         await _log(session, "chat", model_id, None, None, None,

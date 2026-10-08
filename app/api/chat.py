@@ -203,7 +203,8 @@ async def resolve_actions(session_id: uuid.UUID, body: ActionDecisionsIn,
         responses = [{"interruptResponse": {"interruptId": i, "response": d}}
                      for i, d in decisions.items()]
         try:
-            turn = await run_turn(session, user_id, cs_id, responses, [])
+            turn = await run_turn(session, user_id, cs_id, responses, [],
+                                  after_cancel="cancel" in decisions.values())
         except LlmError as e:
             raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"LLM call failed: {e}") from None
         pending.pending_actions = [{**a, "decision": decisions[a["interrupt_id"]]}

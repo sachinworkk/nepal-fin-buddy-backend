@@ -257,6 +257,21 @@ async def test_update_cancel_then_confirm(client, auth, agent):
     assert (await client.get(f"/expenses/{eid}", headers=auth)).json()["amount"] == "500.00"
 
 
+async def test_cancel_does_not_reprompt(client, auth, agent):
+    await add(client, auth, "50.00")
+    eid = await _expense_id(client, auth)
+    dele = {"tools": [("delete_expense", {"expense_id": eid})]}
+    # After the cancel the model tries to delete again; that must not raise a new prompt.
+    agent([dele, dele, {"text": "Okay, I cancelled that."}])
+    sid, r = await _ask(client, auth, "delete it")
+    [action] = r.json()["pending_actions"]
+    r = await _decide(client, auth, sid, [(action["interrupt_id"], "cancel")])
+    assert r.json()["pending_actions"] is None
+    assert r.json()["content"] == "Okay, I cancelled that."
+    assert (await client.get(f"/expenses/{eid}", headers=auth)).status_code == 200
+    assert (await _say(client, auth, sid, "thanks")).status_code == 200
+
+
 async def test_cannot_touch_other_users_expense(client, auth, other_auth, agent):
     await add(client, other_auth, "55.00")
     eid = await _expense_id(client, other_auth)
