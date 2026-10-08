@@ -33,3 +33,17 @@ async def eligible_bills(session: AsyncSession, user_id: uuid.UUID) -> list[Bill
             billed_total_amount=float(b.total_amount), payment_method="Cash",
             name="Placeholder", address="Placeholder", mobile_number="9800000000")
     ]
+
+
+async def pending_handoffs(
+    session: AsyncSession, user_id: uuid.UUID
+) -> list[tuple[PrizeEnrollment, str | None]]:
+    """Handed-off enrollments the user hasn't marked submitted yet, with the bill's vendor
+    name (None if the bill was deleted), newest first."""
+    rows = await session.execute(
+        select(PrizeEnrollment, Bill.vendor_name)
+        .outerjoin(Bill, Bill.id == PrizeEnrollment.bill_id)
+        .where(PrizeEnrollment.user_id == user_id, PrizeEnrollment.status == "handed_off")
+        .order_by(PrizeEnrollment.created_at.desc())
+    )
+    return [(e, vendor) for e, vendor in rows]

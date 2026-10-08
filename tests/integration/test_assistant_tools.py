@@ -2,6 +2,7 @@
 model and OpenRouter stubbed out."""
 
 import datetime as dt
+import json
 import uuid
 
 import pytest
@@ -12,7 +13,7 @@ from app.agent import model as agent_model
 from app.assistant import AggregateArgs, ListArgs
 from app.models import AgentStorage, ChatMessage, Expense
 from tests.integration.fake_agent import FakeAgentModel
-from tests.integration.test_prize import _confirmed_bill, _user_id
+from tests.integration.test_prize import _confirmed_bill, _user_id, handoff_body
 from tests.integration.test_rag_chat import FakeLLM
 
 D = dt.date(2026, 9, 10)
@@ -151,6 +152,21 @@ async def test_agent_lists_prize_eligible_bills(client, auth, other_auth, agent,
     content = r.json()["content"]
     assert "BILL-OK" in content
     assert "BILL-BADPAN" not in content and "BILL-OTHER" not in content
+
+
+async def test_agent_lists_handed_off_bills_as_awaiting(client, auth, agent, db):
+    bill = await _confirmed_bill(db, await _user_id(auth), bill_number="BILL-HANDOFF",
+                                 vendor_name="Bhatbhateni")
+    r = await client.post("/prize/enrollments/handoff", headers=auth,
+                          json=handoff_body(str(bill.id)))
+    assert r.status_code == 200, r.text
+    agent([{"tools": [("list_prize_eligible_bills", {})]}, ANSWER])
+    _, r = await _ask(client, auth, "which bills are eligible for the IRD lottery?")
+    assert r.status_code == 200, r.text
+    out = json.loads(r.json()["content"].removeprefix("Result: "))
+    [b] = out["eligible_bills"]
+    assert b["bill_number"] == "BILL-HANDOFF" and b["vendor"] == "Bhatbhateni"
+    assert b["status"] == "awaiting_portal_submission"
 
 
 async def test_invalid_tool_args_reach_model_as_text(client, auth, agent):
