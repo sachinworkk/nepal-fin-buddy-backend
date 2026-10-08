@@ -12,6 +12,7 @@ from app.agent import model as agent_model
 from app.assistant import AggregateArgs, ListArgs
 from app.models import AgentStorage, ChatMessage, Expense
 from tests.integration.fake_agent import FakeAgentModel
+from tests.integration.test_prize import _confirmed_bill, _user_id
 from tests.integration.test_rag_chat import FakeLLM
 
 D = dt.date(2026, 9, 10)
@@ -137,6 +138,19 @@ async def test_agent_uses_only_callers_expenses(client, auth, other_auth, agent)
     agent([{"tools": [("aggregate_expenses", {})]}, ANSWER])
     _, r = await _ask(client, auth)
     assert "777" not in r.json()["content"]
+
+
+async def test_agent_lists_prize_eligible_bills(client, auth, other_auth, agent, db):
+    user = await _user_id(auth)
+    await _confirmed_bill(db, user, bill_number="BILL-OK")
+    await _confirmed_bill(db, user, bill_number="BILL-BADPAN", vendor_pan="12345")
+    await _confirmed_bill(db, await _user_id(other_auth), bill_number="BILL-OTHER")
+    agent([{"tools": [("list_prize_eligible_bills", {})]}, ANSWER])
+    _, r = await _ask(client, auth, "which bills are eligible for the IRD lottery?")
+    assert r.status_code == 200, r.text
+    content = r.json()["content"]
+    assert "BILL-OK" in content
+    assert "BILL-BADPAN" not in content and "BILL-OTHER" not in content
 
 
 async def test_invalid_tool_args_reach_model_as_text(client, auth, agent):

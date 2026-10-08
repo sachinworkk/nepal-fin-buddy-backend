@@ -26,6 +26,7 @@ from app.observability import trace_span
 from app.rag import retrieve
 from app.schemas.expenses import ExpenseIn, ExpenseUpdate
 from app.services import expenses
+from app.services.prize import eligible_bills
 
 CONFIRM = "expense-confirm"
 
@@ -148,6 +149,21 @@ async def search_documents(tool_context: ToolContext, query: str,
 
 
 @tool(context=True)
+async def list_prize_eligible_bills(tool_context: ToolContext) -> dict | str:
+    """List the user's bills that can be entered in the IRD bill lottery (Bill Magnu Bhagya
+    Pau): confirmed, cash, with PAN, bill number, date and total, and not already submitted.
+    Bills missing any of those details are not eligible; bills are submitted from the app's
+    Prize screen, not by you."""
+    with trace_span("tool.list_prize_eligible_bills", span_type="TOOL"):
+        async with SessionLocal() as s:
+            bills = await eligible_bills(s, _user(tool_context))
+    return json.dumps({"currency": "NPR", "eligible_bills": [
+        {"bill_id": str(b.id), "vendor": b.vendor_name, "pan": b.vendor_pan,
+         "bill_number": b.bill_number, "date": b.bill_date_ad.isoformat(),
+         "total": str(b.total_amount)} for b in bills]})
+
+
+@tool(context=True)
 async def create_expense(
     tool_context: ToolContext,
     amount: Decimal, category: Category,
@@ -249,5 +265,5 @@ async def delete_expense(tool_context: ToolContext, expense_id: str) -> dict | s
             return json.dumps({"deleted": summary})
 
 
-TOOLS = [aggregate_expenses, list_expenses, search_documents,
+TOOLS = [aggregate_expenses, list_expenses, search_documents, list_prize_eligible_bills,
          create_expense, update_expense, delete_expense]
