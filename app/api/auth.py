@@ -14,7 +14,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register(body: RegisterIn, session: SessionDep):
     user = User(
         email=body.email.lower(), password_hash=hash_password(body.password),
-        full_name=body.full_name, preferred_language=body.preferred_language,
+        full_name=body.full_name,
     )
     session.add(user)
     try:
