@@ -1,8 +1,10 @@
+import datetime as dt
+
 import pytest
 from pydantic import ValidationError
 
 from app.agent.tools import TOOLS
-from app.assistant import AggregateArgs, ListArgs, SearchArgs
+from app.assistant import AggregateArgs, ListArgs, SearchArgs, system_prompt
 
 
 def test_aggregate_defaults():
@@ -51,3 +53,8 @@ def test_system_message_has_bs_month_ranges():
     assert bs_month_range(today, 0)[0] == end + dt.timedelta(days=1)
     text = system_prompt(today)
     assert start.isoformat() in text and end.isoformat() in text
+
+
+def test_system_prompt_restricts_scope():
+    p = system_prompt(dt.date(2026, 10, 8))
+    assert "I can only help with questions about your bills" in p

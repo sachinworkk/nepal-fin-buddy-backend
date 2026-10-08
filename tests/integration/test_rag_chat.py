@@ -47,7 +47,9 @@ def fake_llm(monkeypatch):
     monkeypatch.setattr(llm, "_post", f._post)
     # The chat agent's model; each call's messages land in f.chat_calls.
     monkeypatch.setattr(agent_model, "build_model",
-                        lambda: FakeAgentModel(calls=f.chat_calls))
+                        lambda: FakeAgentModel(
+                            calls=f.chat_calls,
+                            default="The rent bill was Rs. 20,000. [Rent note | chunk 0]"))
     return f
 
 
@@ -163,22 +165,14 @@ async def test_document_scoping_rejects_other_users_document(client, other_auth,
     assert r.status_code == 404
 
 
-async def test_citations_only_include_actually_cited_chunks(client, auth, fake_llm, db):
+async def test_answer_without_citation_markers_has_no_citations(
+        client, auth, fake_llm, db, monkeypatch):
     await _upload_note(client, auth, "Paid rent Rs. 20000 for Shrawan to landlord Kumar.")
     sid = (await client.post("/chat/sessions", headers=auth)).json()["id"]
-    # Make the fake chat answer cite a specific chunk title.
-
-    orig_post = fake_llm._post
-
-    async def citing_post(session, purpose, user_id, path, body):
-        if path == "/chat/completions":
-            body = dict(body)
-            body = {**body}
-        return await orig_post(session, purpose, user_id, path, body)
-
-    # simpler: check the default fake answer path — no inline citation markers means
-    # all retrieved chunks are surfaced (fallback), which is already covered elsewhere.
+    # An answer with no [title | chunk N] markers (e.g. a refusal) gets no chips.
+    monkeypatch.setattr(agent_model, "build_model", lambda: FakeAgentModel(
+        default="I'm sorry, I can only help with questions about your bills."))
     r = await client.post(f"/chat/sessions/{sid}/messages", headers=auth,
                           json={"content": "How much rent did I pay?"})
     assert r.status_code == 200
-    assert r.json()["citations"]
+    assert r.json()["citations"] == []

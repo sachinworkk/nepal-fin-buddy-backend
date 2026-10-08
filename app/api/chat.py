@@ -57,10 +57,7 @@ def _citations(answer: str, chunks: list, tool_audit: list[dict]) -> list[Citati
         # Keep only citations the model actually used, in retrieval order.
         keep = set(id(c) for c in valid)
         return [_citation(c) for c in chunks if id(c) in keep]
-    if not chunks or any(t["name"] != "search_documents" for t in tool_audit):
-        return []  # answered from expense tools; retrieved context wasn't the source
-    # Model ignored the citation format; surface the retrieved context as before.
-    return [_citation(c) for c in chunks]
+    return []  # no valid inline markers (refusal, "no info", expense-tool answer)
 
 
 async def _save_turn(session, cs_id: uuid.UUID, turn: TurnResult, chunks: list,
