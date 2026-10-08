@@ -6,8 +6,24 @@ contextual recall — keep it to the essential facts, not prose.
 """
 
 
+import os
+
+# EVAL_SMALL=1 trims the corpus and question set for a quick live run.
+_SMALL_TITLES = {
+    "Rent note", "Bhatbhateni groceries", "WorldLink internet",
+    "Salary slip Shrawan", "Dashain kharcha note",
+}
+
+
 def seed_documents():
     """(kind, title, text) corpus the eval questions are asked against."""
+    docs = _all_documents()
+    if os.environ.get("EVAL_SMALL") == "1":
+        docs = [d for d in docs if d[1] in _SMALL_TITLES]
+    return docs
+
+
+def _all_documents():
     rent = (
         "Rent receipt for the month of Shrawan 2083 BS. Landlord: Kumar Shrestha. "
         "Tenant paid Rs. 20,000.00 in cash on 2083-04-15 BS (2026-07-31 AD). "
@@ -104,6 +120,14 @@ def seed_documents():
 
 
 def golden_cases():
+    cases = _all_cases()
+    if os.environ.get("EVAL_SMALL") == "1":
+        cases = [c for c in cases
+                 if not c["must_retrieve"] or c["must_retrieve"] in _SMALL_TITLES]
+    return cases
+
+
+def _all_cases():
     return [
         {
             "id": "rent_amount",

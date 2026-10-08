@@ -155,6 +155,20 @@ uv run ruff check .
 
 Integration tests need the Postgres container from step 3 running.
 
+### Live LLM evals
+
+`tests/eval` holds the RAG and bill-extraction evals. They call real models (needs
+`OPENROUTER_API_KEY`) and are slow, since each case also makes LLM-judge calls:
+
+```sh
+uv run pytest tests/eval -m live_llm -q
+EVAL_SMALL=1 uv run pytest tests/eval -m live_llm -q   # quick run: 5 documents, 18 questions
+uv run pytest tests/eval/test_rag_eval.py -m live_llm -k TestRetrievalQuality -x -v   # one class, stop at first failure
+```
+
+Use `-v` to see test names while it runs; with `-q` failures only show as `F`. For tracing
+the app's LLM calls and chat turns, see [MLflow monitoring](#mlflow-monitoring).
+
 ## Configuration reference
 
 | Variable | Purpose |
