@@ -5,9 +5,9 @@ async def test_register_login_me(client):
     assert r.status_code == 200
     h = {"Authorization": f"Bearer {r.json()['access_token']}"}
     me = (await client.get("/auth/me", headers=h)).json()
-    assert me["email"] == "a@example.com" and me["preferred_language"] == "en"
-    r = await client.patch("/auth/me", headers=h, json={"preferred_language": "ne", "full_name": "Ram"})
-    assert r.json()["preferred_language"] == "ne" and r.json()["full_name"] == "Ram"
+    assert me["email"] == "a@example.com" and "preferred_language" not in me
+    r = await client.patch("/auth/me", headers=h, json={"full_name": "Ram"})
+    assert r.json()["full_name"] == "Ram"
 
 
 async def test_duplicate_email_and_bad_login(client):
