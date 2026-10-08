@@ -124,7 +124,10 @@ def chat_client(client, auth, corpus):
 class TestRetrievalQuality:
     """Does vector search surface the right document for each question?"""
 
-    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    # Unanswerable questions have no right context, so precision/recall is undefined;
+    # they are covered by the distance test below and by end-to-end faithfulness.
+    @pytest.mark.parametrize("case", [c for c in golden_cases() if c["must_retrieve"]],
+                             ids=lambda c: c["id"])
     async def test_context_precision_recall(self, case, retrieval, judge):
         contexts = await retrieval(case["question"])
         assert contexts, f"no context retrieved for {case['id']}"

@@ -60,6 +60,8 @@ class BillOut(BillFields, ORM):
     image_path: str | None = Field(default=None, exclude=True)
     # Set by the bills API: True when the bill has any prize-lottery enrollment row.
     prize_enrolled: bool = False
+    # The extractor's category guess; only set on the upload response.
+    suggested_category: Category | None = None
 
     @computed_field
     @property
