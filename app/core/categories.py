@@ -12,4 +12,5 @@ class Category(StrEnum):
     shopping = "shopping"
     entertainment = "entertainment"
     fees = "fees"
+    gifts = "gifts"
     other = "other"

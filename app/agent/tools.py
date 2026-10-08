@@ -183,7 +183,7 @@ async def create_expense(
     Args:
         amount: Amount in Nepali Rupees, greater than 0.
         category: Expense category.
-        merchant: Shop or payee name.
+        merchant: Shop, person or service paid (e.g. a family member for a gift).
         note: Short free-text note (e.g. what was bought).
         payment_method: How it was paid.
         expense_date: AD date (YYYY-MM-DD). Give this or expense_date_bs; defaults to today.
