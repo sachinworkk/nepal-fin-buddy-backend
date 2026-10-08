@@ -45,6 +45,14 @@ def _summary(e: Expense) -> dict:
             "payment_method": e.payment_method}
 
 
+def _cancelled(ctx: ToolContext) -> dict | None:
+    """Set while resuming after a cancel: the user just declined, so don't ask again."""
+    if ctx.invocation_state.get("no_confirm"):
+        return _error("The user just cancelled. Don't propose this change again; "
+                      "acknowledge it and ask what they'd like instead.")
+    return None
+
+
 def _validation_text(e: ValidationError) -> str:
     return "Invalid arguments: " + "; ".join(
         f"{'.'.join(map(str, x['loc'])) or 'input'}: {x['msg']}" for x in e.errors())
@@ -194,6 +202,8 @@ async def update_expense(
         expense_date: New AD date (YYYY-MM-DD).
         expense_date_bs: New Bikram Sambat date (YYYY-MM-DD).
     """
+    if (blocked := _cancelled(tool_context)) is not None:
+        return blocked
     changes = {k: v for k, v in locals().items()
                if k not in ("tool_context", "expense_id") and v is not None}
     if not changes:
@@ -223,6 +233,8 @@ async def delete_expense(tool_context: ToolContext, expense_id: str) -> dict | s
     Args:
         expense_id: Id of the expense, from list_expenses.
     """
+    if (blocked := _cancelled(tool_context)) is not None:
+        return blocked
     async with SessionLocal() as s:
         exp = await _owned_expense(s, _user(tool_context), expense_id)
         if exp is None:
