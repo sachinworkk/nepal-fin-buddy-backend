@@ -14,8 +14,8 @@ class Settings(BaseSettings):
 
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    extraction_model: str = "google/gemini-2.5-flash"
-    chat_model: str = "google/gemini-2.5-flash"
+    extraction_model: str = "qwen/qwen3-vl-8b-instruct"
+    chat_model: str = "google/gemma-4-26b-a4b-it"
 
     # Must match document_chunks.embedding dim (Vector(1024)).
     # Qwen/Qwen3-Embedding-0.6B has no OpenRouter endpoints; bge-m3 is 1024-dim.
