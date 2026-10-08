@@ -7,7 +7,7 @@ from typing import Annotated
 import httpx
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import or_, select
+from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, get_owned
 from app.config import get_settings
@@ -24,6 +24,7 @@ from app.schemas.prize import (
     PrizeHandoffIn,
     PrizeHandoffOut,
 )
+from app.services.prize import eligible_bills
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/prize", tags=["prize"])
@@ -209,19 +210,7 @@ async def _find_active(
 @router.get("/eligible", response_model=list[PrizeEligibleOut])
 async def list_eligible(user: CurrentUser, session: SessionDep, http: PrizeClient):
     """Confirmed bills that pass the portal's bill checks and aren't already enrolled."""
-    taken = {
-        (r.seller_pan_no, r.bill_number, r.bill_date)
-        for r in await session.scalars(select(PrizeEnrollment).where(
-            PrizeEnrollment.user_id == user.id,
-            PrizeEnrollment.status.in_(("submitted", "handed_off")),
-        ))
-    }
-    bills = await session.scalars(select(Bill).where(
-        Bill.user_id == user.id, Bill.status == "confirmed",
-        Bill.vendor_pan.is_not(None), Bill.bill_number.is_not(None),
-        Bill.bill_date_ad.is_not(None), Bill.total_amount.is_not(None),
-        or_(Bill.payment_method.is_(None), Bill.payment_method == "cash"),
-    ).order_by(Bill.bill_date_ad.desc()))
+    bills = await eligible_bills(session, user.id)
 
     try:
         years = (await _cached_fiscal_years(http)).get("fiscal_years") or []
@@ -231,14 +220,6 @@ async def list_eligible(user: CurrentUser, session: SessionDep, http: PrizeClien
     today = dt.date.today()
     out = []
     for b in bills:
-        if (b.vendor_pan, b.bill_number, b.bill_date_ad) in taken:
-            continue
-        if validate_fields(
-            bill_number=b.bill_number, seller_pan_no=b.vendor_pan, bill_date=b.bill_date_ad,
-            billed_total_amount=float(b.total_amount), payment_method="Cash",
-            name="Placeholder", address="Placeholder", mobile_number="9800000000",
-        ):
-            continue
         fy = next((y for y in years
                    if y["start_date"] <= b.bill_date_ad.isoformat() <= y["end_date"]), None)
         active = fy is not None and fy.get("status") == "ACTIVE"
