@@ -23,11 +23,12 @@ from app.core.payment_methods import PaymentMethod
 from app.db import SessionLocal
 from app.models import Expense
 from app.observability import trace_span
+from app.prize.client import PrizeError, make_prize_client
 from app.rag import retrieve
 from app.schemas.budgets import BudgetIn
 from app.schemas.expenses import ExpenseIn, ExpenseUpdate
 from app.services import budgets, expenses
-from app.services.prize import eligible_bills, pending_handoffs
+from app.services.prize import eligible_bills, pending_handoffs, prize_summary
 
 CONFIRM = "expense-confirm"
 
@@ -156,12 +157,23 @@ async def list_prize_eligible_bills(tool_context: ToolContext) -> dict | str:
     Bills missing any of those details are not eligible; bills are submitted from the app's
     Prize screen, not by you. Each bill's status is "ready_to_submit" (not started yet) or
     "awaiting_portal_submission" (prepared for the IRD portal, waiting for the user to finish
-    submitting there and mark it submitted)."""
+    submitting there and mark it submitted). The result also has the entry deadline and days left
+    to enter bills for this fiscal year's bumper draw ("entry_deadline", "days_left", omitted
+    if the portal is unreachable) and "coupons_this_year". The portal publishes the entry
+    deadline, not the date of the bumper draw itself; don't state a draw date."""
     with trace_span("tool.list_prize_eligible_bills", span_type="TOOL"):
         async with SessionLocal() as s:
             bills = await eligible_bills(s, _user(tool_context))
             pending = await pending_handoffs(s, _user(tool_context))
-    return json.dumps({"currency": "NPR", "eligible_bills": [
+            try:
+                async with make_prize_client() as http:
+                    summary = await prize_summary(s, _user(tool_context), http)
+            except PrizeError:
+                summary = None
+    deadline = {} if summary is None or summary.days_left is None else {
+        "entry_deadline": summary.entry_deadline.isoformat(), "days_left": summary.days_left,
+        "fiscal_year": summary.fiscal_year_name, "coupons_this_year": summary.coupons_this_year}
+    return json.dumps({"currency": "NPR", **deadline, "eligible_bills": [
         {"vendor": vendor, "pan": e.seller_pan_no, "bill_number": e.bill_number,
          "date": e.bill_date.isoformat(), "total": str(e.billed_total_amount),
          "status": "awaiting_portal_submission"} for e, vendor in pending] + [

@@ -14,12 +14,18 @@ from app.api.prize import get_prize_client
 from app.config import get_settings
 from app.core.security import decode_access_token
 from app.models import Bill, PrizeEnrollment
+from app.services import prize as prize_service
 from mock_prize.app import create_app
 
 
 @pytest.fixture(autouse=True)
 def _no_throttle(monkeypatch):
     monkeypatch.setattr(get_settings(), "prize_user_submit_interval_seconds", 0)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_portal_caches():
+    prize_service.reset_portal_caches()
 
 
 @pytest_asyncio.fixture
@@ -429,3 +435,67 @@ async def test_winners_rejects_bad_params(client, portal, auth):
     for q in ({"from": "nope"}, {"limit": 26}, {"category_id": "a b;c"}):
         r = await client.get("/prize/winners", headers=auth, params=q)
         assert r.status_code == 422, q
+
+
+async def test_summary_counts_and_deadline(client, portal, auth, other_auth, db, monkeypatch):
+    monkeypatch.setattr(prize_service, "nepal_today", lambda: dt.date(2026, 10, 11))
+    monkeypatch.setattr(get_settings(), "prize_bumper_amount_npr", Decimal("10000000"))
+    user = await _user_id(auth)
+    sent = await _confirmed_bill(db, user, bill_number="SENT-1")
+    await _confirmed_bill(db, user, bill_number="OPEN-1")
+    await _confirmed_bill(db, user, bill_number="OLD-1", bill_date_ad=dt.date(2025, 1, 1))
+    await _confirmed_bill(db, await _user_id(other_auth), bill_number="OTHER-1")
+    assert (await client.post("/prize/enrollments", headers=auth,
+                              json=body(str(sent.id)))).status_code == 201
+
+    r = await client.get("/prize/summary", headers=auth)
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["fiscal_year_code"] == "2083-84"
+    assert out["entry_deadline"] == "2027-07-16" and out["days_left"] == 278
+    assert out["coupons_this_year"] == 1
+    assert out["eligible_this_year"] == 1  # OPEN-1; OLD-1 is from the closed fiscal year
+    assert out["pending_handoffs"] == 0
+    assert out["latest_bumper"]["draw_id"] == "draw_mock_bumper"
+    assert out["latest_bumper"]["winner_count"] == 1
+    assert Decimal(out["bumper_prize_amount_npr"]) == 10000000
+
+    other = (await client.get("/prize/summary", headers=other_auth)).json()
+    assert other["coupons_this_year"] == 0 and other["eligible_this_year"] == 1
+
+
+async def test_summary_counts_pending_handoffs(client, portal, auth, db):
+    bill = await _confirmed_bill(db, await _user_id(auth))
+    assert (await client.post("/prize/enrollments/handoff", headers=auth,
+                              json=handoff_body(str(bill.id)))).status_code == 200
+    out = (await client.get("/prize/summary", headers=auth)).json()
+    assert out["pending_handoffs"] == 1 and out["eligible_this_year"] == 0
+
+
+async def test_summary_portal_down(client, auth, db):
+    await _confirmed_bill(db, await _user_id(auth))
+
+    def down(request):
+        raise httpx.ConnectError("portal down", request=request)
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(down), base_url="http://down/api/v1")
+
+    async def override():
+        yield http
+
+    from app.main import app as fastapi_app
+
+    fastapi_app.dependency_overrides[get_prize_client] = override
+    try:
+        r = await client.get("/prize/summary", headers=auth)
+    finally:
+        fastapi_app.dependency_overrides.pop(get_prize_client, None)
+        await http.aclose()
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["days_left"] is None and out["entry_deadline"] is None
+    assert out["latest_bumper"] is None and out["pending_handoffs"] == 0
+
+
+async def test_summary_requires_auth(client, portal):
+    assert (await client.get("/prize/summary")).status_code in (401, 403)
