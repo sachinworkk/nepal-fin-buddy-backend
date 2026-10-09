@@ -5,6 +5,7 @@ plain ``{"error": "..."}`` strings. The Turnstile token and form_started_at
 are per-submission values; they are never logged.
 """
 
+import datetime as dt
 import time
 
 import httpx
@@ -16,6 +17,7 @@ log = structlog.get_logger()
 
 ENROLLMENTS = "/public/enrollments"
 FISCAL_YEARS = "/public/fiscal-years"
+WINNERS = "/public/winners"
 
 
 class PrizeError(Exception):
@@ -79,6 +81,40 @@ async def submit_enrollment(
         log.warning("prize.unreachable", error=type(e).__name__)
         raise PrizeError("prize portal unreachable") from None
     log.info("prize.response", endpoint=ENROLLMENTS, http_status=r.status_code,
+             latency_ms=int((time.monotonic() - started) * 1000))
+    if not r.is_success:
+        raise PrizeError(_parse_error(r), r.status_code)
+    try:
+        return r.json()
+    except ValueError:
+        raise PrizeError(f"prize portal returned HTTP {r.status_code}", r.status_code) from None
+
+async def winners(
+    http: httpx.AsyncClient, limit: int = 25, offset: int = 0, *,
+    fiscal_year_code: str | None = None, category_id: str | None = None,
+    date_from: dt.date | None = None, date_to: dt.date | None = None,
+) -> dict:
+    """GET /public/winners: one page of published draws, each with its winning coupons.
+
+    The portal caps ``limit`` at 25 (echoed back in the response). ``from``/``to`` match draws
+    whose whole eligibility window lies inside the range.
+    """
+    params: dict[str, str | int] = {"limit": limit, "offset": offset}
+    if fiscal_year_code:
+        params["fiscal_year_code"] = fiscal_year_code
+    if category_id:
+        params["category_id"] = category_id
+    if date_from:
+        params["from"] = date_from.isoformat()
+    if date_to:
+        params["to"] = date_to.isoformat()
+    started = time.monotonic()
+    try:
+        r = await http.get(WINNERS, params=params)
+    except httpx.TransportError as e:
+        log.warning("prize.unreachable", error=type(e).__name__)
+        raise PrizeError("prize portal unreachable") from None
+    log.info("prize.response", endpoint=WINNERS, http_status=r.status_code,
              latency_ms=int((time.monotonic() - started) * 1000))
     if not r.is_success:
         raise PrizeError(_parse_error(r), r.status_code)

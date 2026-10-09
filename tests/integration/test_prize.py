@@ -383,3 +383,49 @@ async def test_live_mode_direct_submit_refused(client, portal, auth, db, monkeyp
 
 async def test_config_submission_mode_direct_in_test(client):
     assert (await client.get("/prize/config")).json()["submission_mode"] == "direct"
+
+
+
+async def test_winners_proxy(client, portal, auth):
+    r = await client.get("/prize/winners?limit=1&offset=0", headers=auth)
+    assert r.status_code == 200
+    out = r.json()
+    assert out["total_draws"] == 2 and out["has_more"] is True
+    assert out["draws"][0]["winners"][0]["prize_coupon_number"] == "000000000001"
+
+
+async def test_my_wins_empty_without_enrollments(client, portal, auth):
+    r = await client.get("/prize/my-wins", headers=auth)
+    assert r.status_code == 200 and r.json() == []
+
+
+async def test_my_wins_matches_submitted_coupon(client, portal, auth, db):
+    bill = await _confirmed_bill(db, await _user_id(auth))
+    sub = await client.post("/prize/enrollments", headers=auth, json=body(str(bill.id)))
+    assert sub.status_code == 201, sub.text
+    assert sub.json()["prize_coupon_number"] == "000000000001"
+    r = await client.get("/prize/my-wins", headers=auth)
+    assert r.status_code == 200, r.text
+    wins = r.json()
+    assert len(wins) == 1
+    assert wins[0]["category_title_en"] == "Bumper Prize"
+    assert wins[0]["bill_number"] == "BILL-9" and wins[0]["claim_open"] is True
+
+
+async def test_winners_filters(client, portal, auth):
+    def get(**q):
+        return client.get("/prize/winners", headers=auth, params=q)
+
+    out = (await get(category_id="category_daily")).json()
+    assert out["total_draws"] == 1 and out["draws"][0]["category_title_en"] == "Daily Prize"
+    assert out["categories"] and out["fiscal_years"]  # filter options ride along
+    assert (await get(fiscal_year_code="2082-83")).json()["draws"] == []
+    # from/to match draws whose whole eligibility window (09-17..10-01) lies inside the range
+    assert (await get(**{"from": "2026-09-17", "to": "2026-10-01"})).json()["total_draws"] == 2
+    assert (await get(**{"from": "2026-10-01", "to": "2026-10-09"})).json()["total_draws"] == 0
+
+
+async def test_winners_rejects_bad_params(client, portal, auth):
+    for q in ({"from": "nope"}, {"limit": 26}, {"category_id": "a b;c"}):
+        r = await client.get("/prize/winners", headers=auth, params=q)
+        assert r.status_code == 422, q

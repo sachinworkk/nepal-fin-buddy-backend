@@ -86,3 +86,22 @@ class PrizeEnrollmentPatchIn(BaseModel):
 
     status: Literal["submitted", "dismissed"]
     prize_coupon_number: str | None = Field(default=None, min_length=1, max_length=12)
+
+
+
+class PrizeWinOut(BaseModel):
+    """One of the user's submitted coupons that appears in a published draw."""
+
+    prize_coupon_number: str
+    enrollment_id: uuid.UUID
+    bill_number: str
+    bill_date: dt.date
+    draw_id: str
+    draw_title_en: str
+    draw_title_ne: str | None
+    category_title_en: str
+    category_title_ne: str | None
+    winner_rank: int
+    published_at: dt.datetime | None
+    claim_deadline: dt.datetime | None
+    claim_open: bool
