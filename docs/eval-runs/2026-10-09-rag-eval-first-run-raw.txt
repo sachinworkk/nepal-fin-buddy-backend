@@ -1,0 +1,82 @@
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+___________ TestHitRate.test_correct_document_in_top_k[clinic_total] ___________
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x754e940f8b00>
+case = {'id': 'clinic_total', 'question': 'What did my clinic visit cost in total?', 'must_retrieve': 'Sajha clinic', 'expected_answer_hint': 'The Sajha Health Clinic visit cost Rs. 1,840.00 in total.'}
+rank = <function rank.<locals>.get at 0x7549f87013a0>
+
+>   ???
+E   AssertionError: clinic_total: expected 'Sajha clinic' in top 6, got ['Daraz order', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'NEA electricity', 'Sunrise school fee'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['Daraz order', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'NEA electricity', 'Sunrise school fee'], 'Sajha clinic', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+__________ TestHitRate.test_correct_document_in_top_k[romanized_rent] __________
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x754e940f9370>
+case = {'id': 'romanized_rent', 'question': 'Maile ghar bhada kati tirein?', 'must_retrieve': 'Rent note', 'expected_answer_hint': 'You paid Rs. 20,000 rent for Shrawan 2083.'}
+rank = <function rank.<locals>.get at 0x7549fe9edda0>
+
+>   ???
+E   AssertionError: romanized_rent: expected 'Rent note' in top 6, got ['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'WorldLink internet', 'Pathao ride'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'WorldLink internet', 'Pathao ride'], 'Rent note', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+______ TestHitRate.test_correct_document_in_top_k[romanized_electricity] _______
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x754e940f9460>
+case = {'id': 'romanized_electricity', 'question': 'Bijuli ko bill kati aayo?', 'must_retrieve': 'NEA electricity', 'expected_answer_hint': 'The electricity bill was Rs. 1,612.00.'}
+rank = <function rank.<locals>.get at 0x7549fe9ef4c0>
+
+>   ???
+E   AssertionError: romanized_electricity: expected 'NEA electricity' in top 6, got ['Newa Momo restaurant', 'BigMart groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'BigMart groceries'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['Newa Momo restaurant', 'BigMart groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'BigMart groceries'], 'NEA electricity', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+________ TestHitRate.test_correct_document_in_top_k[romanized_dashain] _________
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x754e940f9520>
+case = {'id': 'romanized_dashain', 'question': 'Dashain ma jamma kati kharcha bhayo?', 'must_retrieve': 'Dashain kharcha note', 'expected_answer_hint': 'Total Dashain spending was Rs. 10,700.'}
+rank = <function rank.<locals>.get at 0x7549fe9ed9e0>
+
+>   ???
+E   AssertionError: romanized_dashain: expected 'Dashain kharcha note' in top 6, got ['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries'], 'Dashain kharcha note', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+=========================== short test summary info ============================
+FAILED tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[biggest_grocery_bill]
+FAILED tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_rent]
+FAILED tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_electricity]
+FAILED tests/eval/test_rag_eval.py::TestRetrievalQuality::test_refusal_case_retrieves_nothing_strongly_relevant
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[rent_amount]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[net_salary]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[missing_info_refusal]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[electricity_total]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[restaurant_service_charge]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[daraz_payment_method]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[line_item_cooking_oil]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[salary_ssf]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[salary_tds]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[devanagari_net_salary]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_bank_balance]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_landlord_phone]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[clinic_total]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_rent]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_electricity]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_dashain]
+ERROR tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[rent_amount]
+ERROR tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[grocery_vat]
+ERROR tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[internet_due]
+ERROR tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[net_salary]
+ERROR tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[biggest_grocery_bill]
+ERROR tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[electricity_total]
+ERROR tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[mobile_vat]
+ERROR tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[kalimati_total]
+============= 20 failed, 64 passed, 8 errors in 3282.95s (0:54:42) =============
+
+[exited with code 0]

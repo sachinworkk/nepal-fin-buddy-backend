@@ -21,9 +21,10 @@ from deepeval.metrics import (
     ContextualPrecisionMetric,
     ContextualRecallMetric,
     FaithfulnessMetric,
+    GEval,
 )
 from deepeval.models import OpenRouterModel
-from deepeval.test_case import LLMTestCase
+from deepeval.test_case import LLMTestCase, LLMTestCaseParams
 
 from app.config import get_settings
 from tests.eval.golden import golden_cases, seed_documents
@@ -102,8 +103,15 @@ def retrieval(corpus, app_engine) -> Callable[[str], Awaitable[list[str]]]:
 
 
 @pytest.fixture
-def chat_client(client, auth, corpus):
-    """Async callable: question -> (answer, citation snippets) via real /chat."""
+def chat_client(client, corpus):
+    """Async callable: question -> (answer, citation snippets) via real /chat.
+
+    Authenticates as the corpus user: the golden documents are seeded under that user, so any
+    other user would see an empty library and every answer would be "I couldn't find ...".
+    """
+    from app.core.security import create_access_token
+
+    auth = {"Authorization": f"Bearer {create_access_token(corpus)}"}
     session_holder: dict[str, str] = {}
 
     async def ask(question: str) -> tuple[str, list[str]]:
@@ -184,7 +192,24 @@ class TestEndToEnd:
             expected_output=case["expected_answer_hint"],
             retrieval_context=snippets,
         )
-        assert_test(tc, [
-            FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True),
-            AnswerRelevancyMetric(model=judge, threshold=0.7),
-        ])
+        correctness = GEval(
+            name="Correctness", model=judge, threshold=0.7,
+            criteria=(
+                "Judge whether the actual output gives the same answer as the expected output. "
+                "The headline fact(s) in the expected output (the main amount, name or date the "
+                "question asks for) must be present and must not be contradicted. Formatting "
+                "(Rs. 20,000 vs Rs. 20,000.00, Nepali vs Western numerals), synonyms "
+                "(Supermarket vs grocery) and extra detail are fine, and so is leaving out "
+                "secondary details. Fail an output that gives a wrong or invented value, or the "
+                "wrong figure (e.g. gross instead of net). If the expected output says the "
+                "information is not available, the actual output must say it has no such "
+                "information or record; a generic refusal to help, or any invented value, fails."
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
+        )
+        metrics = [FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True), correctness]
+        if case["must_retrieve"]:
+            # A correct refusal is inherently "irrelevant" to the question, so only score
+            # relevancy where the answer is in the corpus.
+            metrics.append(AnswerRelevancyMetric(model=judge, threshold=0.7))
+        assert_test(tc, metrics)

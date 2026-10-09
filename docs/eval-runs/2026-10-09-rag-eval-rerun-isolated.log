@@ -1,0 +1,365 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/ubuntu/Desktop/presentation/nepal-fin-buddy-backend/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/ubuntu/Desktop/presentation/nepal-fin-buddy-backend
+configfile: pyproject.toml
+plugins: repeat-0.9.4, deepeval-4.2.8, anyio-4.15.1, rerunfailures-16.7, xdist-3.8.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=session
+collecting ... collected 28 items
+
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[biggest_grocery_bill] INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+2026-10-09 11:08:52 [info     ] reranker.loading               device=cuda model=BAAI/bge-reranker-v2-m3
+Loading weights:   0%|          | 0/393 [00:00<?, ?it/s]Loading weights: 100%|██████████| 393/393 [00:00<00:00, 21008.40it/s]
+
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_rent] 
+FAILED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_electricity] 
+FAILED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_refusal_case_retrieves_nothing_strongly_relevant FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[rent_amount] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[net_salary] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[missing_info_refusal] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[electricity_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[restaurant_service_charge] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[daraz_payment_method] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[line_item_cooking_oil] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[salary_ssf] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[salary_tds] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[devanagari_net_salary] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_bank_balance] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_landlord_phone] 
+FAILED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[clinic_total] FAILED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_rent] FAILED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_electricity] FAILED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_dashain] FAILED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[rent_amount] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[grocery_vat] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[internet_due] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[net_salary] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[biggest_grocery_bill] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[electricity_total] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[mobile_vat] FAILED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[kalimati_total] PASSEDRunning teardown with pytest sessionfinish...
+
+
+=================================== FAILURES ===================================
+______ TestRetrievalQuality.test_context_precision_recall[romanized_rent] ______
+
+self = <tests.eval.test_rag_eval.TestRetrievalQuality object at 0x7e4864c3ee10>
+case = {'id': 'romanized_rent', 'question': 'Maile ghar bhada kati tirein?', 'must_retrieve': 'Rent note', 'expected_answer_hint': 'You paid Rs. 20,000 rent for Shrawan 2083.'}
+retrieval = <function retrieval.<locals>.get at 0x7e44bc1c7a60>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7e485ec2afc0>
+
+    @pytest.mark.parametrize("case", [c for c in golden_cases() if c["must_retrieve"]],
+                             ids=lambda c: c["id"])
+    async def test_context_precision_recall(self, case, retrieval, judge):
+        contexts = await retrieval(case["question"])
+        assert contexts, f"no context retrieved for {case['id']}"
+        tc = LLMTestCase(
+            input=case["question"],
+            actual_output=case["expected_answer_hint"],
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=contexts,
+        )
+>       assert_test(tc, [
+            ContextualPrecisionMetric(model=judge, threshold=0.7),
+            ContextualRecallMetric(model=judge, threshold=0.7),
+        ])
+
+tests/eval/test_rag_eval.py:140: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='Maile ghar bhada kati tirein?', actual_output='You paid Rs. 20,000 rent for Shrawan 2083.', expecte...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.contextual_precision.contextual_precision.ContextualPrecisionMetric object at 0x7e46e49e0e00>, <deepeval.metrics.contextual_recall.contextual_recall.ContextualRecallMetric object at 0x7e46e49c0950>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Contextual Precision (score: 0.0, threshold: 0.7, strict: False, error: None, reason: The score is 0.00 because every node in the retrieval contexts is irrelevant to the query. Node 1’s reason states "The document only lists grocery items and a total of Rs. 7,791.35, with no mention of any rent payment," node 2 notes a "Pathao ride receipt" unrelated to rent, node 3 describes "Dashain expenses" with no rent info, node 4 lists a restaurant bill, node 5 shows a telecom invoice, and node 6 is a salary slip—all lacking any rent information. Since there are no relevant nodes to rank above these irrelevant ones, the contextual precision remains at zero.), Contextual Recall (score: 0.0, threshold: 0.7, strict: False, error: None, reason: The score is 0.00 because none of the six retrieval nodes contain any mention of rent or a Rs. 20,000 payment, so the sentence in the expected output cannot be linked to any node.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+__ TestRetrievalQuality.test_context_precision_recall[romanized_electricity] ___
+
+self = <tests.eval.test_rag_eval.TestRetrievalQuality object at 0x7e4864c3ef00>
+case = {'id': 'romanized_electricity', 'question': 'Bijuli ko bill kati aayo?', 'must_retrieve': 'NEA electricity', 'expected_answer_hint': 'The electricity bill was Rs. 1,612.00.'}
+retrieval = <function retrieval.<locals>.get at 0x7e443035efc0>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7e485ec2afc0>
+
+    @pytest.mark.parametrize("case", [c for c in golden_cases() if c["must_retrieve"]],
+                             ids=lambda c: c["id"])
+    async def test_context_precision_recall(self, case, retrieval, judge):
+        contexts = await retrieval(case["question"])
+        assert contexts, f"no context retrieved for {case['id']}"
+        tc = LLMTestCase(
+            input=case["question"],
+            actual_output=case["expected_answer_hint"],
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=contexts,
+        )
+>       assert_test(tc, [
+            ContextualPrecisionMetric(model=judge, threshold=0.7),
+            ContextualRecallMetric(model=judge, threshold=0.7),
+        ])
+
+tests/eval/test_rag_eval.py:140: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='Bijuli ko bill kati aayo?', actual_output='The electricity bill was Rs. 1,612.00.', expected_output...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.contextual_precision.contextual_precision.ContextualPrecisionMetric object at 0x7e44303e62a0>, <deepeval.metrics.contextual_recall.contextual_recall.ContextualRecallMetric object at 0x7e44303e5cd0>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Contextual Precision (score: 0.25, threshold: 0.7, strict: False, error: None, reason: The score is 0.25 because the first three retrieval nodes (ranks 1‑3) are irrelevant – e.g., node 1’s reason says "The document lists grocery items and a total of Rs. 7,791.35, which is unrelated to an electricity bill," and similarly nodes 2 and 3 are unrelated receipts. Only the relevant node appears at rank 4, where its reason states "The Nepal Electricity Authority bill ... directly providing the expected electricity bill amount." Having irrelevant nodes ranked above the single relevant one drags the contextual precision down to 0.25.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+__ TestRetrievalQuality.test_refusal_case_retrieves_nothing_strongly_relevant __
+
+self = <tests.eval.test_rag_eval.TestRetrievalQuality object at 0x7e4864c710a0>
+retrieval = <function retrieval.<locals>.get at 0x7e48681adee0>
+corpus = UUID('c09eec84-b251-44a0-8635-d32b751735a5')
+app_engine = <sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x7e485ec5aa90>
+
+    async def test_refusal_case_retrieves_nothing_strongly_relevant(
+        self, retrieval, corpus, app_engine,
+    ):
+        """retrieve() always returns top-k, so for an out-of-corpus question we
+        assert the best match is only weakly similar instead of empty."""
+        from sqlalchemy import select
+        from sqlalchemy.ext.asyncio import async_sessionmaker
+    
+        from app.llm import embed
+        from app.models import DocumentChunk
+    
+        case = next(c for c in golden_cases() if c["id"] == "missing_info_refusal")
+        _ = await retrieval(case["question"])  # exercise retrieval, ignore its output
+        maker = async_sessionmaker(app_engine, expire_on_commit=False)
+        async with maker() as session:
+            qvec = (await embed(session, corpus, [case["question"]]))[0]
+            row = (await session.execute(
+                select(
+                    DocumentChunk, DocumentChunk.embedding.cosine_distance(qvec).label("d"),
+                ).where(DocumentChunk.user_id == corpus)
+                .order_by("d").limit(1)
+            )).first()
+            assert row is not None
+            best, distance = row
+        distance = float(distance)
+>       assert distance > 0.5, (
+            f"fuel question matched '{best.meta.get('title')}' too closely "
+            f"(cosine distance {distance:.2f}) — retrieval may be leaking irrelevant docs"
+        )
+E       AssertionError: fuel question matched 'NEA electricity' too closely (cosine distance 0.46) — retrieval may be leaking irrelevant docs
+E       assert 0.4557906227049414 > 0.5
+
+tests/eval/test_rag_eval.py:170: AssertionError
+______________ TestEndToEnd.test_chat_answer_quality[salary_tds] _______________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7e4864c72c00>
+case = {'id': 'salary_tds', 'question': 'How much tax was deducted at source from my salary?', 'must_retrieve': 'Salary slip Shrawan', 'expected_answer_hint': 'Tax deducted at source (TDS) was Rs. 8,500.00.'}
+chat_client = <function chat_client.<locals>.ask at 0x7e43cd4700e0>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7e485ec2afc0>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+>       assert_test(tc, [
+            FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True),
+            AnswerRelevancyMetric(model=judge, threshold=0.7),
+        ])
+
+tests/eval/test_rag_eval.py:187: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='How much tax was deducted at source from my salary?', actual_output="I'm sorry, I can only help wit...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x7e43cd4afce0>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x7e43cc2fec90>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Answer Relevancy (score: 0.5, threshold: 0.7, strict: False, error: None, reason: The score is 0.50 because the response contained an irrelevant apology ("I'm sorry.") that did not address the question about tax deducted at source, lowering its relevance.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+_________ TestEndToEnd.test_chat_answer_quality[devanagari_net_salary] _________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7e4864c3e840>
+case = {'id': 'devanagari_net_salary', 'question': 'मेरो खुद तलब कति थियो?', 'must_retrieve': 'Salary slip Shrawan', 'expected_answer_hint': 'Net salary was Rs. 98,300.00.'}
+chat_client = <function chat_client.<locals>.ask at 0x7e43cc398fe0>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7e485ec2afc0>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+>       assert_test(tc, [
+            FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True),
+            AnswerRelevancyMetric(model=judge, threshold=0.7),
+        ])
+
+tests/eval/test_rag_eval.py:187: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='मेरो खुद तलब कति थियो?', actual_output="I'm sorry, I can only help with questions about your bills,...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x7e43cd4681a0>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x7e43cd4accb0>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Answer Relevancy (score: 0.5, threshold: 0.7, strict: False, error: None, reason: The score is 0.50 because the response contained a generic apology ('I’m sorry.') that does not address the user’s question about their salary, lowering its relevance.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+__________ TestEndToEnd.test_chat_answer_quality[refuse_bank_balance] __________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7e4864c3e720>
+case = {'id': 'refuse_bank_balance', 'question': 'What is my current bank account balance?', 'must_retrieve': None, 'expected_answer_hint': "I don't have information about your current bank balance in your documents."}
+chat_client = <function chat_client.<locals>.ask at 0x7e43cc39b100>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7e485ec2afc0>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+>       assert_test(tc, [
+            FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True),
+            AnswerRelevancyMetric(model=judge, threshold=0.7),
+        ])
+
+tests/eval/test_rag_eval.py:187: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='What is my current bank account balance?', actual_output="I'm sorry, I can only help with questions...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x7e43cc35c1a0>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x7e43cc35c890>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Answer Relevancy (score: 0.5, threshold: 0.7, strict: False, error: None, reason: The score is 0.50 because the response included an irrelevant apology ('I'm sorry.') and failed to provide the requested bank account balance, limiting its relevance.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+_________ TestEndToEnd.test_chat_answer_quality[refuse_landlord_phone] _________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7e4864c3e600>
+case = {'id': 'refuse_landlord_phone', 'question': "What is my landlord's phone number?", 'must_retrieve': None, 'expected_answer_hint': 'The documents name the landlord, Kumar Shrestha, but contain no phone number.'}
+chat_client = <function chat_client.<locals>.ask at 0x7e43cc399760>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7e485ec2afc0>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+>       assert_test(tc, [
+            FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True),
+            AnswerRelevancyMetric(model=judge, threshold=0.7),
+        ])
+
+tests/eval/test_rag_eval.py:187: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input="What is my landlord's phone number?", actual_output="I'm sorry, I can only help with questions abou...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x7e43cd4c5d30>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x7e43cd5dcc80>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Answer Relevancy (score: 0.5, threshold: 0.7, strict: False, error: None, reason: The score is 0.50 because the response only gave a generic apology and failed to provide the landlord's phone number, making the answer largely irrelevant to the request.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+___________ TestHitRate.test_correct_document_in_top_k[clinic_total] ___________
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x7e4864c815e0>
+case = {'id': 'clinic_total', 'question': 'What did my clinic visit cost in total?', 'must_retrieve': 'Sajha clinic', 'expected_answer_hint': 'The Sajha Health Clinic visit cost Rs. 1,840.00 in total.'}
+rank = <function rank.<locals>.get at 0x7e43cc374c20>
+
+>   ???
+E   AssertionError: clinic_total: expected 'Sajha clinic' in top 6, got ['Daraz order', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'NEA electricity', 'Sunrise school fee'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['Daraz order', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'NEA electricity', 'Sunrise school fee'], 'Sajha clinic', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+__________ TestHitRate.test_correct_document_in_top_k[romanized_rent] __________
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x7e4864c81e50>
+case = {'id': 'romanized_rent', 'question': 'Maile ghar bhada kati tirein?', 'must_retrieve': 'Rent note', 'expected_answer_hint': 'You paid Rs. 20,000 rent for Shrawan 2083.'}
+rank = <function rank.<locals>.get at 0x7e43cc3756c0>
+
+>   ???
+E   AssertionError: romanized_rent: expected 'Rent note' in top 6, got ['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'WorldLink internet', 'Pathao ride'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'WorldLink internet', 'Pathao ride'], 'Rent note', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+______ TestHitRate.test_correct_document_in_top_k[romanized_electricity] _______
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x7e4864c81f40>
+case = {'id': 'romanized_electricity', 'question': 'Bijuli ko bill kati aayo?', 'must_retrieve': 'NEA electricity', 'expected_answer_hint': 'The electricity bill was Rs. 1,612.00.'}
+rank = <function rank.<locals>.get at 0x7e43cc302a20>
+
+>   ???
+E   AssertionError: romanized_electricity: expected 'NEA electricity' in top 6, got ['BigMart groceries', 'Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'BigMart groceries'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['BigMart groceries', 'Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'BigMart groceries'], 'NEA electricity', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+________ TestHitRate.test_correct_document_in_top_k[romanized_dashain] _________
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x7e4864c82000>
+case = {'id': 'romanized_dashain', 'question': 'Dashain ma jamma kati kharcha bhayo?', 'must_retrieve': 'Dashain kharcha note', 'expected_answer_hint': 'Total Dashain spending was Rs. 10,700.'}
+rank = <function rank.<locals>.get at 0x7e43cc3779c0>
+
+>   ???
+E   AssertionError: romanized_dashain: expected 'Dashain kharcha note' in top 6, got ['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries'], 'Dashain kharcha note', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+____________ TestHitRate.test_correct_document_in_top_k[mobile_vat] ____________
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x7e4864c810a0>
+case = {'id': 'mobile_vat', 'question': 'How much VAT did I pay on my mobile postpaid bill?', 'must_retrieve': 'Nepal Telecom mobile', 'expected_answer_hint': 'VAT on the Nepal Telecom bill was Rs. 104.00, total Rs. 904.00.'}
+rank = <function rank.<locals>.get at 0x7e43cc377ce0>
+
+>   ???
+E   AssertionError: mobile_vat: expected 'Nepal Telecom mobile' in top 6, got ['WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries'], 'Nepal Telecom mobile', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+=========================== short test summary info ============================
+FAILED tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_rent]
+FAILED tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_electricity]
+FAILED tests/eval/test_rag_eval.py::TestRetrievalQuality::test_refusal_case_retrieves_nothing_strongly_relevant
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[salary_tds]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[devanagari_net_salary]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_bank_balance]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_landlord_phone]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[clinic_total]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_rent]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_electricity]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_dashain]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[mobile_vat]
+================== 12 failed, 16 passed in 934.86s (0:15:34) ===================
