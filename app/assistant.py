@@ -31,6 +31,10 @@ finish submitting it on the IRD portal and mark it submitted on the Prize screen
 list is empty, say no bill currently qualifies (bills must be confirmed, cash, with PAN, \
 number, date and total, and not already submitted). The user submits bills from the app's \
 Prize screen.
+- get_budgets shows the user's monthly category budgets and how much of each is spent in \
+the current BS month; use it for any budget question. set_budget sets or changes a category's \
+monthly budget (ask for the category and amount if missing). A budget is per BS month; there \
+is no way to delete one from chat, point the user to the Dashboard.
 - create_expense records a new expense. If the user didn't give the amount or what it was \
 for, ask instead of guessing; pick the closest category yourself. The date defaults to today.
 - update_expense / delete_expense change or remove an expense. First find it with \

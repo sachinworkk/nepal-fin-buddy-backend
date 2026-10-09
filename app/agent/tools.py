@@ -24,8 +24,9 @@ from app.db import SessionLocal
 from app.models import Expense
 from app.observability import trace_span
 from app.rag import retrieve
+from app.schemas.budgets import BudgetIn
 from app.schemas.expenses import ExpenseIn, ExpenseUpdate
-from app.services import expenses
+from app.services import budgets, expenses
 from app.services.prize import eligible_bills, pending_handoffs
 
 CONFIRM = "expense-confirm"
@@ -170,6 +171,42 @@ async def list_prize_eligible_bills(tool_context: ToolContext) -> dict | str:
 
 
 @tool(context=True)
+async def get_budgets(tool_context: ToolContext) -> dict | str:
+    """List the user's monthly category budgets with how much of each has been spent so far
+    in the current Bikram Sambat month. Use it for any question about budgets, limits or
+    whether the user is over or close to budget. Each entry has the budget amount, spent,
+    remaining (negative when over), percent used and a status of "ok", "warning" (80% or more
+    used) or "over"."""
+    with trace_span("tool.get_budgets", span_type="TOOL"):
+        async with SessionLocal() as s:
+            rows = await budgets.budget_status(s, _user(tool_context))
+    if not rows:
+        return "The user has not set any budgets yet."
+    return json.dumps({"currency": "NPR", "period": "current BS month", "budgets": rows},
+                      default=str)
+
+
+@tool(context=True)
+async def set_budget(tool_context: ToolContext, category: Category, amount: Decimal) -> dict | str:
+    """Set or change the monthly budget for one category. Ask for the category and the amount
+    if the user didn't give both; never invent them.
+
+    Args:
+        category: Expense category the budget applies to.
+        amount: Monthly budget in Nepali Rupees, greater than 0.
+    """
+    try:
+        body = BudgetIn(amount=amount)
+    except ValidationError as e:
+        return _error(_validation_text(e))
+    with trace_span("tool.set_budget", span_type="TOOL"):
+        async with SessionLocal() as s:
+            b = await budgets.upsert_budget(s, _user(tool_context), category, body.amount)
+            return json.dumps({"budget_set": {"category": b.category,
+                                              "monthly_amount": str(b.amount)}})
+
+
+@tool(context=True)
 async def create_expense(
     tool_context: ToolContext,
     amount: Decimal, category: Category,
@@ -272,4 +309,4 @@ async def delete_expense(tool_context: ToolContext, expense_id: str) -> dict | s
 
 
 TOOLS = [aggregate_expenses, list_expenses, search_documents, list_prize_eligible_bills,
-         create_expense, update_expense, delete_expense]
+         get_budgets, set_budget, create_expense, update_expense, delete_expense]

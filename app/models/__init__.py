@@ -16,6 +16,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
@@ -291,3 +292,15 @@ class AgentStorage(Base):
     updated_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class Budget(Base):
+    """A monthly spending limit for one category; measured against the current BS month."""
+
+    __tablename__ = "budgets"
+    id: Mapped[uuid.UUID] = _pk()
+    user_id: Mapped[uuid.UUID] = _fk("users")
+    category: Mapped[str] = mapped_column(String(30), ForeignKey("categories.slug"))
+    amount: Mapped[Decimal] = mapped_column(Money)
+    created_at: Mapped[dt.datetime] = _now()
+    __table_args__ = (UniqueConstraint("user_id", "category", name="uq_budget_user_category"),)

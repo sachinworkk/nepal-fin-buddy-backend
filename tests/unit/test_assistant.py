@@ -35,7 +35,7 @@ def test_search_requires_query():
 def test_tools_expose_no_user_id():
     assert {t.tool_name for t in TOOLS} == {
         "aggregate_expenses", "list_expenses", "search_documents", "list_prize_eligible_bills",
-        "create_expense", "update_expense", "delete_expense"}
+        "get_budgets", "set_budget", "create_expense", "update_expense", "delete_expense"}
     for t in TOOLS:
         props = t.tool_spec["inputSchema"]["json"]["properties"]
         assert not {"user_id", "tool_context", "document_ids"} & set(props), t.tool_name
