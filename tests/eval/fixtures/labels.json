@@ -4,7 +4,7 @@
     {
       "id": "qfx-cinema-ticket",
       "image": "1.png",
-      "source": "tests/bills/1.png \u2014 QFX cinema e-ticket (Bhatbhateni Bhaktapur)",
+      "source": "tests/bills/1.png — QFX cinema e-ticket (Bhatbhateni Bhaktapur)",
       "expected": {
         "vendor_name": "QFX",
         "bill_date_ad": "2024-09-20",
@@ -23,7 +23,7 @@
     {
       "id": "csnepal-invoice",
       "image": "2.png",
-      "source": "tests/bills/2.png \u2014 C.S. Nepal handwritten invoice",
+      "source": "tests/bills/2.png — C.S. Nepal handwritten invoice",
       "expected": {
         "vendor_name": "C.S. Nepal Pvt. Ltd.",
         "vendor_pan": "601176029",
@@ -44,7 +44,7 @@
     {
       "id": "restaurant-crumpled",
       "image": "scdgwcrq00q91.jpg",
-      "source": "tests/bills/scdgwcrq00q91.jpg \u2014 crumpled restaurant receipt",
+      "source": "tests/bills/scdgwcrq00q91.jpg — crumpled restaurant receipt",
       "expected": {
         "bill_date_ad": "2022-09-25",
         "subtotal": "1522.09",
@@ -69,6 +69,56 @@
           {
             "description": "Cheese Ball",
             "amount": "252.21"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pharmacy-sales-bill",
+      "image": "IMG_9644.jpg",
+      "source": "IMG_9644.jpg — Bibhu Bistra Pharmacy thermal sales bill (crumpled photo)",
+      "expected": {
+        "vendor_name": "Bibhu Bistra Pharmacy Pvt Ltd",
+        "vendor_pan": "610312874",
+        "bill_number": "SI36922-MMX-083/84",
+        "bill_date_bs": "2083-06-06",
+        "bill_date_ad": "2026-09-22",
+        "subtotal": "727.20",
+        "discount": "2.20",
+        "total_amount": "725.00",
+        "payment_method": null,
+        "items": [
+          {
+            "description": "NATPURE DHA",
+            "amount": "560.00"
+          },
+          {
+            "description": "ONDEM-MD 4mg TAB",
+            "amount": "167.20"
+          }
+        ]
+      }
+    },
+    {
+      "id": "energetic-invoice-pdf",
+      "image": "energetic.pdf",
+      "source": "energetic.pdf — Energetic Nepal Pvt. Ltd. tax invoice (PDF)",
+      "expected": {
+        "vendor_name": "Energetic Nepal Pvt. Ltd.",
+        "vendor_pan": "602457642",
+        "bill_number": "2079/80-17-EN",
+        "bill_date_bs": "2079-11-12",
+        "bill_date_ad": "2023-02-24",
+        "subtotal": "8344028.01",
+        "discount": "0.00",
+        "taxable_amount": "8344028.01",
+        "vat_amount": "1084723.64",
+        "total_amount": "9428751.65",
+        "payment_method": null,
+        "items": [
+          {
+            "description": "Second Running Bill",
+            "amount": "8344028.01"
           }
         ]
       }
