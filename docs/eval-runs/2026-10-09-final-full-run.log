@@ -1,0 +1,795 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/ubuntu/Desktop/presentation/nepal-fin-buddy-backend/.venv/bin/python
+rootdir: /home/ubuntu/Desktop/presentation/nepal-fin-buddy-backend
+configfile: pyproject.toml
+plugins: repeat-0.9.4, deepeval-4.2.8, anyio-4.15.1, rerunfailures-16.7, xdist-3.8.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=session
+collecting ... collected 95 items
+
+tests/eval/test_extraction_bench.py::test_per_bill_accuracy INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+FAILED
+tests/eval/test_extraction_bench.py::test_overall_accuracy PASSED
+tests/eval/test_extraction_bench.py::test_report 
+field               correct/total  accuracy   failing bills
+bill_date_bs           2/3       66.7%   csnepal-invoice
+vat_amount             2/3       66.7%   qfx-cinema-ticket
+bill_date_ad           4/5       80.0%   csnepal-invoice
+items                  4/5       80.0%   csnepal-invoice
+subtotal               4/5       80.0%   csnepal-invoice
+total_amount           4/5       80.0%   csnepal-invoice
+bill_number            3/3      100.0%   -
+discount               3/3      100.0%   -
+payment_method         5/5      100.0%   -
+taxable_amount         2/2      100.0%   -
+vendor_name            4/4      100.0%   -
+vendor_pan             3/3      100.0%   -
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[rent_amount] 2026-10-09 16:31:23 [info     ] reranker.loading               device=cpu model=BAAI/bge-reranker-v2-m3
+Loading weights:   0%|          | 0/393 [00:00<?, ?it/s]Loading weights: 100%|██████████| 393/393 [00:00<00:00, 13881.41it/s]
+
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[grocery_vat] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[internet_due] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[net_salary] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[biggest_grocery_bill] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[electricity_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[mobile_vat] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[kalimati_total] ERROR [deepeval.retry.openrouter] call timed out after 88.5s (per attempt). Increase DEEPEVAL_PER_ATTEMPT_TIMEOUT_SECONDS_OVERRIDE (None disables) or reduce work per attempt. Retrying: 1 time(s)...
+INFO  [deepeval.retry.openrouter] Retrying in 2.619915000759561 s (attempt 1) after TimeoutError('call timed out after 88.5s (per attempt). Increase DEEPEVAL_PER_ATTEMPT_TIMEOUT_SECONDS_OVERRIDE (None disables) or reduce work per attempt.')
+
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[restaurant_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[restaurant_service_charge] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[daraz_discount] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[daraz_payment_method] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[pathao_fare] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[clinic_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[school_fee_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[internet_plan] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[line_item_cooking_oil] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[salary_ssf] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[salary_tds] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[payment_method_bhatbhateni] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[bigmart_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[bigmart_vat_not_bhatbhateni] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[lookup_by_bill_number] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[lookup_by_pan] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_rent] 
+FAILED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_electricity] 
+FAILED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_dashain] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[devanagari_dashain] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[devanagari_net_salary] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_refusal_case_retrieves_nothing_strongly_relevant FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[rent_amount] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[grocery_vat] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[internet_due] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[net_salary] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[biggest_grocery_bill] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[missing_info_refusal] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[electricity_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[mobile_vat] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[kalimati_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[restaurant_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[restaurant_service_charge] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[daraz_discount] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[daraz_payment_method] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[pathao_fare] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[clinic_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[school_fee_total] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[internet_plan] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[line_item_cooking_oil] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[salary_ssf] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[salary_tds] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[payment_method_bhatbhateni] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[bigmart_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[bigmart_vat_not_bhatbhateni] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[lookup_by_bill_number] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[lookup_by_pan] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[romanized_rent] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[romanized_electricity] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[romanized_dashain] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[devanagari_dashain] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[devanagari_net_salary] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_bank_balance] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_landlord_phone] 
+PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[rent_amount] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[grocery_vat] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[internet_due] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[net_salary] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[biggest_grocery_bill] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[electricity_total] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[mobile_vat] FAILED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[kalimati_total] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[restaurant_total] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[restaurant_service_charge] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[daraz_discount] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[daraz_payment_method] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[pathao_fare] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[clinic_total] FAILED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[school_fee_total] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[internet_plan] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[line_item_cooking_oil] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[salary_ssf] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[salary_tds] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[payment_method_bhatbhateni] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[bigmart_total] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[bigmart_vat_not_bhatbhateni] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[lookup_by_bill_number] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[lookup_by_pan] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_rent] FAILED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_electricity] FAILED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_dashain] FAILED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[devanagari_dashain] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[devanagari_net_salary] PASSED
+tests/eval/test_rag_retrieval_ranking.py::TestRerankerEffect::test_hit_rate_report 
+rerank_enabled=True hit@6=24/29 (83%)
+  rent_amount: HIT  ['Rent note', 'Rent note', 'Rent note', 'Daraz order', 'WorldLink internet', 'WorldLink internet']
+  grocery_vat: HIT  ['Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Nepal Telecom mobile', 'Bhatbhateni groceries', 'Bhatbhateni groceries']
+  internet_due: HIT  ['WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet']
+  net_salary: HIT  ['Daraz order', 'Salary slip Shrawan', 'Salary slip Shrawan', 'Salary slip Shrawan', 'WorldLink internet', 'WorldLink internet']
+  biggest_grocery_bill: HIT  ['Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Dashain kharcha note', 'Daraz order', 'Bhatbhateni groceries']
+  electricity_total: HIT  ['NEA electricity', 'NEA electricity', 'Daraz order', 'Rent note', 'Rent note', 'NEA electricity']
+  mobile_vat: MISS ['WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'BigMart groceries', 'Newa Momo restaurant', 'Bhatbhateni groceries']
+  kalimati_total: HIT  ['Kalimati vegetables', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Kalimati vegetables', 'Kalimati vegetables']
+  restaurant_total: HIT  ['Newa Momo restaurant', 'Daraz order', 'Newa Momo restaurant', 'Rent note', 'Rent note', 'Rent note']
+  restaurant_service_charge: HIT  ['Newa Momo restaurant', 'Newa Momo restaurant', 'NEA electricity', 'Newa Momo restaurant', 'Sunrise school fee', 'WorldLink internet']
+  daraz_discount: HIT  ['Daraz order', 'Daraz order', 'Daraz order', 'Newa Momo restaurant', 'BigMart groceries', 'Pathao ride']
+  daraz_payment_method: HIT  ['Daraz order', 'Daraz order', 'Daraz order', 'Pathao ride', 'BigMart groceries', 'Kalimati vegetables']
+  pathao_fare: HIT  ['Sunrise school fee', 'Pathao ride', 'Pathao ride', 'Pathao ride', 'Rent note', 'Rent note']
+  clinic_total: MISS ['Daraz order', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'NEA electricity', 'Sunrise school fee']
+  school_fee_total: HIT  ['Sunrise school fee', 'NEA electricity', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'Salary slip Shrawan']
+  internet_plan: HIT  ['WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet']
+  line_item_cooking_oil: HIT  ['Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Daraz order', 'Rent note', 'Rent note']
+  salary_ssf: HIT  ['Salary slip Shrawan', 'Salary slip Shrawan', 'Salary slip Shrawan', 'Daraz order', 'Salary slip Shrawan', 'Salary slip Shrawan']
+  salary_tds: HIT  ['Salary slip Shrawan', 'Salary slip Shrawan', 'Salary slip Shrawan', 'Daraz order', 'Salary slip Shrawan', 'Salary slip Shrawan']
+  payment_method_bhatbhateni: HIT  ['Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'BigMart groceries', 'Pathao ride', 'Newa Momo restaurant']
+  bigmart_total: HIT  ['BigMart groceries', 'Daraz order', 'Sajha clinic', 'Bhatbhateni groceries', 'Kalimati vegetables', 'BigMart groceries']
+  bigmart_vat_not_bhatbhateni: HIT  ['BigMart groceries', 'WorldLink internet', 'WorldLink internet', 'Bhatbhateni groceries', 'Newa Momo restaurant', 'Nepal Telecom mobile']
+  lookup_by_bill_number: HIT  ['BigMart groceries', 'BigMart groceries', 'Daraz order', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries']
+  lookup_by_pan: HIT  ['Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'BigMart groceries', 'BigMart groceries', 'Nepal Telecom mobile']
+  romanized_rent: MISS ['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'WorldLink internet', 'Pathao ride']
+  romanized_electricity: MISS ['BigMart groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Newa Momo restaurant', 'BigMart groceries']
+  romanized_dashain: MISS ['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries']
+  devanagari_dashain: HIT  ['Dashain kharcha note', 'Daraz order', 'Kalimati vegetables', 'BigMart groceries', 'Sajha clinic', 'Nepal Telecom mobile']
+  devanagari_net_salary: HIT  ['Daraz order', 'Rent note', 'Rent note', 'Rent note', 'Salary slip Shrawan', 'WorldLink internet']
+PASSEDRunning teardown with pytest sessionfinish...
+
+
+=================================== FAILURES ===================================
+____________________________ test_per_bill_accuracy ____________________________
+
+runs = [{'bill_id': 'qfx-cinema-ticket', 'fields': {'vendor_name': {'status': 'correct', 'expected': 'QFX', 'actual': 'QFX CI...e_bs': {'status': 'correct', 'expected': '2079-11-12', 'actual': '2079.11.12'}, ...}, 'correct': 12, 'total': 12, ...}]
+
+>   ???
+E   AssertionError: csnepal-invoice: 4/9 fields correct
+E     {
+E       "bill_date_ad": {
+E         "status": "miss",
+E         "expected": null,
+E         "actual": "2024-07-08"
+E       },
+E       "subtotal": {
+E         "status": "miss",
+E         "expected": "6700.00",
+E         "actual": "6708"
+E       },
+E       "total_amount": {
+E         "status": "miss",
+E         "expected": "6700.00",
+E         "actual": "6708"
+E       },
+E       "items": {
+E         "status": "miss",
+E         "expected": [
+E           {
+E             "description": "Hardisk 2TB",
+E             "amount": "6700.00"
+E           }
+E         ],
+E         "actual": [
+E           {
+E             "description": "Hardisk 2TB",
+E             "quantity": "1",
+E             "unit_price": "6708",
+E             "amount": "6708"
+E           }
+E         ]
+E       },
+E       "bill_date_bs": {
+E         "status": "missing",
+E         "expected": "2082-05-02",
+E         "actual": null
+E       }
+E     }
+E   assert 0.4444444444444444 >= 0.7
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_extraction_bench.py:73: AssertionError
+______ TestRetrievalQuality.test_context_precision_recall[romanized_rent] ______
+
+self = <tests.eval.test_rag_eval.TestRetrievalQuality object at 0x7291d83763c0>
+case = {'id': 'romanized_rent', 'question': 'Maile ghar bhada kati tirein?', 'must_retrieve': 'Rent note', 'expected_answer_hint': 'You paid Rs. 20,000 rent for Shrawan 2083.'}
+retrieval = <function retrieval.<locals>.get at 0x7290350034c0>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7291d60fafc0>
+
+    @pytest.mark.parametrize("case", [c for c in golden_cases() if c["must_retrieve"]],
+                             ids=lambda c: c["id"])
+    async def test_context_precision_recall(self, case, retrieval, judge):
+        contexts = await retrieval(case["question"])
+        assert contexts, f"no context retrieved for {case['id']}"
+        tc = LLMTestCase(
+            input=case["question"],
+            actual_output=case["expected_answer_hint"],
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=contexts,
+        )
+>       assert_test(tc, [
+            ContextualPrecisionMetric(model=judge, threshold=0.7),
+            ContextualRecallMetric(model=judge, threshold=0.7),
+        ])
+
+tests/eval/test_rag_eval.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='Maile ghar bhada kati tirein?', actual_output='You paid Rs. 20,000 rent for Shrawan 2083.', expecte...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.contextual_precision.contextual_precision.ContextualPrecisionMetric object at 0x729051f7f110>, <deepeval.metrics.contextual_recall.contextual_recall.ContextualRecallMetric object at 0x729034fff710>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Contextual Precision (score: 0.0, threshold: 0.7, strict: False, error: None, reason: The score is 0.00 because every node in the retrieval list is irrelevant to the query. Node 1’s reason says it "contains no mention of any rent payment," node 2 notes it "does not reference any house rent," node 3 "does not include any rent information," node 4 "with no reference to rent payment," node 5 "contains no rent-related data," and node 6 "does not mention any rent payment." Since there are no relevant nodes at any rank, contextual precision is zero.), Contextual Recall (score: 0.0, threshold: 0.7, strict: False, error: None, reason: The score is 0.00 because the single sentence (1) about paying Rs. 20,000 rent for Shrawan 2083 cannot be linked to any of the six nodes in retrieval context, which discuss a supermarket bill, Pathao receipt, Dashain expense, restaurant bill, telecom invoice, and salary slip, none of which mention rent or that amount.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+__ TestRetrievalQuality.test_context_precision_recall[romanized_electricity] ___
+
+self = <tests.eval.test_rag_eval.TestRetrievalQuality object at 0x7291d83764b0>
+case = {'id': 'romanized_electricity', 'question': 'Bijuli ko bill kati aayo?', 'must_retrieve': 'NEA electricity', 'expected_answer_hint': 'The electricity bill was Rs. 1,612.00.'}
+retrieval = <function retrieval.<locals>.get at 0x729035002a20>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7291d60fafc0>
+
+    @pytest.mark.parametrize("case", [c for c in golden_cases() if c["must_retrieve"]],
+                             ids=lambda c: c["id"])
+    async def test_context_precision_recall(self, case, retrieval, judge):
+        contexts = await retrieval(case["question"])
+        assert contexts, f"no context retrieved for {case['id']}"
+        tc = LLMTestCase(
+            input=case["question"],
+            actual_output=case["expected_answer_hint"],
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=contexts,
+        )
+>       assert_test(tc, [
+            ContextualPrecisionMetric(model=judge, threshold=0.7),
+            ContextualRecallMetric(model=judge, threshold=0.7),
+        ])
+
+tests/eval/test_rag_eval.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='Bijuli ko bill kati aayo?', actual_output='The electricity bill was Rs. 1,612.00.', expected_output...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.contextual_precision.contextual_precision.ContextualPrecisionMetric object at 0x729035183aa0>, <deepeval.metrics.contextual_recall.contextual_recall.ContextualRecallMetric object at 0x7290352351f0>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Contextual Precision (score: 0.25, threshold: 0.7, strict: False, error: None, reason: The score is 0.25 because the first three retrieval‑context nodes (ranks 1‑3) are irrelevant – e.g., node 1’s reason says it "does not mention electricity or the amount Rs. 1,612.00," and node 2 and 3 similarly lack any electricity‑bill reference – and they are ranked ahead of the only relevant node (rank 4), whose reason notes it "states 'Total payable Rs. 1,612.00,' directly providing the electricity bill amount required." This misplaced ordering drags the precision down, keeping the score at 0.25 rather than higher.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+__ TestRetrievalQuality.test_refusal_case_retrieves_nothing_strongly_relevant __
+
+self = <tests.eval.test_rag_eval.TestRetrievalQuality object at 0x7291d83a44a0>
+retrieval = <function retrieval.<locals>.get at 0x729034fd5e40>
+corpus = UUID('d6365932-8900-4e65-a8db-c90d4586b8ca')
+app_engine = <sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x7291d6159150>
+
+    async def test_refusal_case_retrieves_nothing_strongly_relevant(
+        self, retrieval, corpus, app_engine,
+    ):
+        """retrieve() always returns top-k, so for an out-of-corpus question we
+        assert the best match is only weakly similar instead of empty."""
+        from sqlalchemy import select
+        from sqlalchemy.ext.asyncio import async_sessionmaker
+    
+        from app.llm import embed
+        from app.models import DocumentChunk
+    
+        case = next(c for c in golden_cases() if c["id"] == "missing_info_refusal")
+        _ = await retrieval(case["question"])  # exercise retrieval, ignore its output
+        maker = async_sessionmaker(app_engine, expire_on_commit=False)
+        async with maker() as session:
+            qvec = (await embed(session, corpus, [case["question"]]))[0]
+            row = (await session.execute(
+                select(
+                    DocumentChunk, DocumentChunk.embedding.cosine_distance(qvec).label("d"),
+                ).where(DocumentChunk.user_id == corpus)
+                .order_by("d").limit(1)
+            )).first()
+            assert row is not None
+            best, distance = row
+        distance = float(distance)
+>       assert distance > 0.5, (
+            f"fuel question matched '{best.meta.get('title')}' too closely "
+            f"(cosine distance {distance:.2f}) — retrieval may be leaking irrelevant docs"
+        )
+E       AssertionError: fuel question matched 'NEA electricity' too closely (cosine distance 0.46) — retrieval may be leaking irrelevant docs
+E       assert 0.455798864364624 > 0.5
+
+tests/eval/test_rag_eval.py:178: AssertionError
+______________ TestEndToEnd.test_chat_answer_quality[rent_amount] ______________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7291d83a4b00>
+case = {'id': 'rent_amount', 'question': 'How much rent did I pay and to whom?', 'must_retrieve': 'Rent note', 'expected_answer_hint': 'You paid Rs. 20,000 rent to Kumar Shrestha for Shrawan 2083.'}
+chat_client = <function chat_client.<locals>.ask at 0x728f284e22a0>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7291d60fafc0>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+        correctness = GEval(
+            name="Correctness", model=judge, threshold=0.7,
+            criteria=(
+                "Judge whether the actual output gives the same answer as the expected output. "
+                "The headline fact(s) in the expected output (the main amount, name or date the "
+                "question asks for) must be present and must not be contradicted. Formatting "
+                "(Rs. 20,000 vs Rs. 20,000.00, Nepali vs Western numerals), synonyms "
+                "(Supermarket vs grocery) and extra detail are fine, and so is leaving out "
+                "secondary details. Fail an output that gives a wrong or invented value, or the "
+                "wrong figure (e.g. gross instead of net). If the expected output says the "
+                "information is not available, the actual output must say it has no such "
+                "information or record; a generic refusal to help, or any invented value, fails."
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
+        )
+        metrics = [FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True), correctness]
+        if case["must_retrieve"]:
+            # A correct refusal is inherently "irrelevant" to the question, so only score
+            # relevancy where the answer is in the corpus.
+            metrics.append(AnswerRelevancyMetric(model=judge, threshold=0.7))
+>       assert_test(tc, metrics)
+
+tests/eval/test_rag_eval.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='How much rent did I pay and to whom?', actual_output='You paid Rs. 20,000.00 in rent to Kumar Shres...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x728f283ac1d0>, <deepeval.metrics.g_eval.g_...t 0x728f283ad160>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x728f283ad070>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Correctness [GEval] (score: 0.4, threshold: 0.7, strict: False, error: None, reason: The actual output correctly includes the amount (Rs. 20,000.00) and the name Kumar Shrestha, matching the headline facts from the expected output. However, it omits the date "for Shrawan 2083," which is a key headline fact, so the output is incomplete.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+______________ TestEndToEnd.test_chat_answer_quality[grocery_vat] ______________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7291d83a4710>
+case = {'id': 'grocery_vat', 'question': 'What was the VAT on my Bhatbhateni grocery bill?', 'must_retrieve': 'Bhatbhateni groceries', 'expected_answer_hint': 'VAT on the Bhatbhateni bill was Rs. 896.35, total Rs. 7,791.35.'}
+chat_client = <function chat_client.<locals>.ask at 0x728f2827c860>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7291d60fafc0>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+        correctness = GEval(
+            name="Correctness", model=judge, threshold=0.7,
+            criteria=(
+                "Judge whether the actual output gives the same answer as the expected output. "
+                "The headline fact(s) in the expected output (the main amount, name or date the "
+                "question asks for) must be present and must not be contradicted. Formatting "
+                "(Rs. 20,000 vs Rs. 20,000.00, Nepali vs Western numerals), synonyms "
+                "(Supermarket vs grocery) and extra detail are fine, and so is leaving out "
+                "secondary details. Fail an output that gives a wrong or invented value, or the "
+                "wrong figure (e.g. gross instead of net). If the expected output says the "
+                "information is not available, the actual output must say it has no such "
+                "information or record; a generic refusal to help, or any invented value, fails."
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
+        )
+        metrics = [FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True), correctness]
+        if case["must_retrieve"]:
+            # A correct refusal is inherently "irrelevant" to the question, so only score
+            # relevancy where the answer is in the corpus.
+            metrics.append(AnswerRelevancyMetric(model=judge, threshold=0.7))
+>       assert_test(tc, metrics)
+
+tests/eval/test_rag_eval.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='What was the VAT on my Bhatbhateni grocery bill?', actual_output='The VAT on your Bhatbhateni Super...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x728f2820e6c0>, <deepeval.metrics.g_eval.g_...t 0x728f2820c0b0>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x728f2820de20>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Correctness [GEval] (score: 0.3, threshold: 0.7, strict: False, error: None, reason: The Actual Output correctly includes the VAT amount (Rs. 896.35) and the Bhatbhateni name, matching part of the headline fact. However, it omits the total amount (Rs. 7,791.35) present in the Expected Output, so not all headline facts are covered, making the response incomplete.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+______________ TestEndToEnd.test_chat_answer_quality[mobile_vat] _______________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7291d83a5250>
+case = {'id': 'mobile_vat', 'question': 'How much VAT did I pay on my mobile postpaid bill?', 'must_retrieve': 'Nepal Telecom mobile', 'expected_answer_hint': 'VAT on the Nepal Telecom bill was Rs. 104.00, total Rs. 904.00.'}
+chat_client = <function chat_client.<locals>.ask at 0x728f283db240>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7291d60fafc0>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+        correctness = GEval(
+            name="Correctness", model=judge, threshold=0.7,
+            criteria=(
+                "Judge whether the actual output gives the same answer as the expected output. "
+                "The headline fact(s) in the expected output (the main amount, name or date the "
+                "question asks for) must be present and must not be contradicted. Formatting "
+                "(Rs. 20,000 vs Rs. 20,000.00, Nepali vs Western numerals), synonyms "
+                "(Supermarket vs grocery) and extra detail are fine, and so is leaving out "
+                "secondary details. Fail an output that gives a wrong or invented value, or the "
+                "wrong figure (e.g. gross instead of net). If the expected output says the "
+                "information is not available, the actual output must say it has no such "
+                "information or record; a generic refusal to help, or any invented value, fails."
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
+        )
+        metrics = [FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True), correctness]
+        if case["must_retrieve"]:
+            # A correct refusal is inherently "irrelevant" to the question, so only score
+            # relevancy where the answer is in the corpus.
+            metrics.append(AnswerRelevancyMetric(model=judge, threshold=0.7))
+>       assert_test(tc, metrics)
+
+tests/eval/test_rag_eval.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='How much VAT did I pay on my mobile postpaid bill?', actual_output='You paid Rs. 104.00 in VAT on y...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x728f28131760>, <deepeval.metrics.g_eval.g_...t 0x728f282cd760>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x728f282dcf80>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Correctness [GEval] (score: 0.6, threshold: 0.7, strict: False, error: None, reason: The actual output correctly includes the headline fact that VAT was Rs. 104.00 for the Nepal Telecom bill, matching the expected amount and entity. However, it omits the second headline fact from the expected output—the total amount of Rs. 904.00—so it does not fully satisfy step 2. No contradictory or invented values are present.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+____________ TestEndToEnd.test_chat_answer_quality[daraz_discount] _____________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7291d83a5550>
+case = {'id': 'daraz_discount', 'question': 'How much discount did I get on my Daraz order and what did I finally pay?', 'must_retrieve': 'Daraz order', 'expected_answer_hint': 'A voucher discount of Rs. 300.00; total paid Rs. 2,299.00.'}
+chat_client = <function chat_client.<locals>.ask at 0x728f2815ee80>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7291d60fafc0>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+        correctness = GEval(
+            name="Correctness", model=judge, threshold=0.7,
+            criteria=(
+                "Judge whether the actual output gives the same answer as the expected output. "
+                "The headline fact(s) in the expected output (the main amount, name or date the "
+                "question asks for) must be present and must not be contradicted. Formatting "
+                "(Rs. 20,000 vs Rs. 20,000.00, Nepali vs Western numerals), synonyms "
+                "(Supermarket vs grocery) and extra detail are fine, and so is leaving out "
+                "secondary details. Fail an output that gives a wrong or invented value, or the "
+                "wrong figure (e.g. gross instead of net). If the expected output says the "
+                "information is not available, the actual output must say it has no such "
+                "information or record; a generic refusal to help, or any invented value, fails."
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
+        )
+        metrics = [FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True), correctness]
+        if case["must_retrieve"]:
+            # A correct refusal is inherently "irrelevant" to the question, so only score
+            # relevancy where the answer is in the corpus.
+            metrics.append(AnswerRelevancyMetric(model=judge, threshold=0.7))
+>       assert_test(tc, metrics)
+
+tests/eval/test_rag_eval.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='How much discount did I get on my Daraz order and what did I finally pay?', actual_output='You rece...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x728f28235d60>, <deepeval.metrics.g_eval.g_...t 0x728f28237950>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x728f28236420>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Answer Relevancy (score: 0.5, threshold: 0.7, strict: False, error: None, reason: The score is 0.50 because the response contained meaningless characters and ellipses that offered no information about the discount amount or final payment, rendering a significant portion of the answer irrelevant.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+___________ TestEndToEnd.test_chat_answer_quality[school_fee_total] ____________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7291d83a5850>
+case = {'id': 'school_fee_total', 'question': 'How much was the school fee for Shrawan?', 'must_retrieve': 'Sunrise school fe...d_answer_hint': 'The Sunrise English School fee was Rs. 6,000.00 (tuition 4,500.00, transport 1,200.00, exam 300.00).'}
+chat_client = <function chat_client.<locals>.ask at 0x728f2811ea20>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7291d60fafc0>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+        correctness = GEval(
+            name="Correctness", model=judge, threshold=0.7,
+            criteria=(
+                "Judge whether the actual output gives the same answer as the expected output. "
+                "The headline fact(s) in the expected output (the main amount, name or date the "
+                "question asks for) must be present and must not be contradicted. Formatting "
+                "(Rs. 20,000 vs Rs. 20,000.00, Nepali vs Western numerals), synonyms "
+                "(Supermarket vs grocery) and extra detail are fine, and so is leaving out "
+                "secondary details. Fail an output that gives a wrong or invented value, or the "
+                "wrong figure (e.g. gross instead of net). If the expected output says the "
+                "information is not available, the actual output must say it has no such "
+                "information or record; a generic refusal to help, or any invented value, fails."
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
+        )
+        metrics = [FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True), correctness]
+        if case["must_retrieve"]:
+            # A correct refusal is inherently "irrelevant" to the question, so only score
+            # relevancy where the answer is in the corpus.
+            metrics.append(AnswerRelevancyMetric(model=judge, threshold=0.7))
+>       assert_test(tc, metrics)
+
+tests/eval/test_rag_eval.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='How much was the school fee for Shrawan?', actual_output='The school fee for Shrawan 2083 was Rs. 6...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x728f282b6270>, <deepeval.metrics.g_eval.g_...t 0x728f282b4e90>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x728f282b5490>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Correctness [GEval] (score: 0.4, threshold: 0.7, strict: False, error: None, reason: The Expected Output’s headline facts are the school name (Sunrise English School) and the total fee of Rs. 6,000.00 with a detailed breakdown. The Actual Output provides the same total amount and references "Sunrise school fee," but it does not state the full school name nor include the tuition, transport, and exam breakdown. It also adds an unrelated date (Shrawan 2083). Because key details are missing and extra information is introduced, the alignment is partial.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+____________ TestEndToEnd.test_chat_answer_quality[romanized_rent] _____________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7291d83a6030>
+case = {'id': 'romanized_rent', 'question': 'Maile ghar bhada kati tirein?', 'must_retrieve': 'Rent note', 'expected_answer_hint': 'You paid Rs. 20,000 rent for Shrawan 2083.'}
+chat_client = <function chat_client.<locals>.ask at 0x728f28116480>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7291d60fafc0>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+        correctness = GEval(
+            name="Correctness", model=judge, threshold=0.7,
+            criteria=(
+                "Judge whether the actual output gives the same answer as the expected output. "
+                "The headline fact(s) in the expected output (the main amount, name or date the "
+                "question asks for) must be present and must not be contradicted. Formatting "
+                "(Rs. 20,000 vs Rs. 20,000.00, Nepali vs Western numerals), synonyms "
+                "(Supermarket vs grocery) and extra detail are fine, and so is leaving out "
+                "secondary details. Fail an output that gives a wrong or invented value, or the "
+                "wrong figure (e.g. gross instead of net). If the expected output says the "
+                "information is not available, the actual output must say it has no such "
+                "information or record; a generic refusal to help, or any invented value, fails."
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
+        )
+        metrics = [FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True), correctness]
+        if case["must_retrieve"]:
+            # A correct refusal is inherently "irrelevant" to the question, so only score
+            # relevancy where the answer is in the corpus.
+            metrics.append(AnswerRelevancyMetric(model=judge, threshold=0.7))
+>       assert_test(tc, metrics)
+
+tests/eval/test_rag_eval.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='Maile ghar bhada kati tirein?', actual_output='तपाईंका कागजातहरूमा घरभाडाको बारेमा कुनै जानकारी छैन...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x728f20779760>, <deepeval.metrics.g_eval.g_...t 0x728f20662750>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x728f20661e80>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Correctness [GEval] (score: 0.0, threshold: 0.7, strict: False, error: None, reason: The expected headline facts (Rs. 20,000 rent for Shrawan 2083) are missing and contradicted; the actual output says no rent information is available, which does not match the expected amount and date.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+_________ TestEndToEnd.test_chat_answer_quality[devanagari_net_salary] _________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7291d83a6330>
+case = {'id': 'devanagari_net_salary', 'question': 'मेरो खुद तलब कति थियो?', 'must_retrieve': 'Salary slip Shrawan', 'expected_answer_hint': 'Net salary was Rs. 98,300.00.'}
+chat_client = <function chat_client.<locals>.ask at 0x728f207862a0>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7291d60fafc0>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+        correctness = GEval(
+            name="Correctness", model=judge, threshold=0.7,
+            criteria=(
+                "Judge whether the actual output gives the same answer as the expected output. "
+                "The headline fact(s) in the expected output (the main amount, name or date the "
+                "question asks for) must be present and must not be contradicted. Formatting "
+                "(Rs. 20,000 vs Rs. 20,000.00, Nepali vs Western numerals), synonyms "
+                "(Supermarket vs grocery) and extra detail are fine, and so is leaving out "
+                "secondary details. Fail an output that gives a wrong or invented value, or the "
+                "wrong figure (e.g. gross instead of net). If the expected output says the "
+                "information is not available, the actual output must say it has no such "
+                "information or record; a generic refusal to help, or any invented value, fails."
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
+        )
+        metrics = [FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True), correctness]
+        if case["must_retrieve"]:
+            # A correct refusal is inherently "irrelevant" to the question, so only score
+            # relevancy where the answer is in the corpus.
+            metrics.append(AnswerRelevancyMetric(model=judge, threshold=0.7))
+>       assert_test(tc, metrics)
+
+tests/eval/test_rag_eval.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='मेरो खुद तलब कति थियो?', actual_output='तपाईंको श्रावण २०८३ को तलब (Gross salary) रु १,२०,०००.०० थि...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x728f207d1760>, <deepeval.metrics.g_eval.g_...t 0x728f207785c0>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x728f28146db0>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Correctness [GEval] (score: 0.0, threshold: 0.7, strict: False, error: None, reason: The expected headline fact is a net salary of Rs 98,300.00, but the actual output gives a gross salary of Rs 1,20,000.00, which is a different amount and type of salary, thus it does not match the expected fact and provides an incorrect figure.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+____________ TestHitRate.test_correct_document_in_top_k[mobile_vat] ____________
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x7291d83cc9b0>
+case = {'id': 'mobile_vat', 'question': 'How much VAT did I pay on my mobile postpaid bill?', 'must_retrieve': 'Nepal Telecom mobile', 'expected_answer_hint': 'VAT on the Nepal Telecom bill was Rs. 104.00, total Rs. 904.00.'}
+rank = <function rank.<locals>.get at 0x728f207853a0>
+
+>   ???
+E   AssertionError: mobile_vat: expected 'Nepal Telecom mobile' in top 6, got ['BigMart groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'WorldLink internet', 'WorldLink internet'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['BigMart groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'WorldLink internet', 'WorldLink internet'], 'Nepal Telecom mobile', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+___________ TestHitRate.test_correct_document_in_top_k[clinic_total] ___________
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x7291d83ccef0>
+case = {'id': 'clinic_total', 'question': 'What did my clinic visit cost in total?', 'must_retrieve': 'Sajha clinic', 'expected_answer_hint': 'The Sajha Health Clinic visit cost Rs. 1,840.00 in total.'}
+rank = <function rank.<locals>.get at 0x728f207abb00>
+
+>   ???
+E   AssertionError: clinic_total: expected 'Sajha clinic' in top 6, got ['Daraz order', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'NEA electricity', 'Sunrise school fee'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['Daraz order', 'WorldLink internet', 'WorldLink internet', 'WorldLink internet', 'NEA electricity', 'Sunrise school fee'], 'Sajha clinic', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+__________ TestHitRate.test_correct_document_in_top_k[romanized_rent] __________
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x7291d83cd580>
+case = {'id': 'romanized_rent', 'question': 'Maile ghar bhada kati tirein?', 'must_retrieve': 'Rent note', 'expected_answer_hint': 'You paid Rs. 20,000 rent for Shrawan 2083.'}
+rank = <function rank.<locals>.get at 0x728f20784a40>
+
+>   ???
+E   AssertionError: romanized_rent: expected 'Rent note' in top 6, got ['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'WorldLink internet', 'Pathao ride'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'WorldLink internet', 'Pathao ride'], 'Rent note', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+______ TestHitRate.test_correct_document_in_top_k[romanized_electricity] _______
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x7291d83cd670>
+case = {'id': 'romanized_electricity', 'question': 'Bijuli ko bill kati aayo?', 'must_retrieve': 'NEA electricity', 'expected_answer_hint': 'The electricity bill was Rs. 1,612.00.'}
+rank = <function rank.<locals>.get at 0x728f206ff920>
+
+>   ???
+E   AssertionError: romanized_electricity: expected 'NEA electricity' in top 6, got ['Bhatbhateni groceries', 'Bhatbhateni groceries', 'BigMart groceries', 'Bhatbhateni groceries', 'Newa Momo restaurant', 'BigMart groceries'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['Bhatbhateni groceries', 'Bhatbhateni groceries', 'BigMart groceries', 'Bhatbhateni groceries', 'Newa Momo restaurant', 'BigMart groceries'], 'NEA electricity', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+________ TestHitRate.test_correct_document_in_top_k[romanized_dashain] _________
+
+self = <tests.eval.test_rag_retrieval_ranking.TestHitRate object at 0x7291d83cd730>
+case = {'id': 'romanized_dashain', 'question': 'Dashain ma jamma kati kharcha bhayo?', 'must_retrieve': 'Dashain kharcha note', 'expected_answer_hint': 'Total Dashain spending was Rs. 10,700.'}
+rank = <function rank.<locals>.get at 0x728f206fd800>
+
+>   ???
+E   AssertionError: romanized_dashain: expected 'Dashain kharcha note' in top 6, got ['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries'] (rerank_enabled=True)
+E   assert False
+E    +  where False = _hit(['Newa Momo restaurant', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries', 'Bhatbhateni groceries'], 'Dashain kharcha note', 6)
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/tests/eval/test_rag_retrieval_ranking.py:79: AssertionError
+=============================== warnings summary ===============================
+tests/eval/test_rag_eval.py:27
+tests/eval/test_rag_eval.py:27
+  /home/ubuntu/Desktop/presentation/nepal-fin-buddy-backend/tests/eval/test_rag_eval.py:27: DeprecationWarning: 'LLMTestCaseParams' is deprecated and will be removed in a future release. Use 'SingleTurnParams' instead.
+    from deepeval.test_case import LLMTestCase, LLMTestCaseParams
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/eval/test_extraction_bench.py::test_per_bill_accuracy - Assertio...
+FAILED tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_rent]
+FAILED tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_electricity]
+FAILED tests/eval/test_rag_eval.py::TestRetrievalQuality::test_refusal_case_retrieves_nothing_strongly_relevant
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[rent_amount]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[grocery_vat]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[mobile_vat]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[daraz_discount]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[school_fee_total]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[romanized_rent]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[devanagari_net_salary]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[mobile_vat]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[clinic_total]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_rent]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_electricity]
+FAILED tests/eval/test_rag_retrieval_ranking.py::TestHitRate::test_correct_document_in_top_k[romanized_dashain]
+============ 16 failed, 79 passed, 2 warnings in 3474.55s (0:57:54) ============

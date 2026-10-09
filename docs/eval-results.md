@@ -230,6 +230,44 @@ Takeaways:
 - Estimated chat score now: 21/32 (run 2) + 4 flips to pass ~ 25/32, with the caveat above;
   not a measured full run.
 
+## 2026-10-09: FINAL full run (all 95 live tests, one uninterrupted run)
+
+Log: `docs/eval-runs/2026-10-09-final-full-run.log`. Includes the extraction prompt fixes, the
+chat-eval harness fix and the scope-refusal prompt change. Nothing else ran against the test DB
+or OpenRouter, the banking service was stopped, and the reranker ran on the CPU (an earlier
+attempt on the GPU was aborted because another process starved it; see
+`2026-10-09-rag-final-attempt1-aborted-gpu-contention.log`).
+
+**Result: 79 passed, 16 failed (83%), 57m54s.**
+
+| Suite | Pass | Notes |
+|---|---|---|
+| Extraction benchmark (`test_extraction_bench`) | 2/3 tests (40/46 fields, 87%) | per-bill floor fails on `csnepal-invoice` |
+| Retrieval quality (precision/recall + leak check) | 27/30 | romanized rent/electricity, fuel-question leak |
+| Retrieval ranking (hit rate in top 6) | 24/29 hit-rate cases + reranker-effect test | misses below |
+| Chat end-to-end | 25/32 (78%) | up from 21/32 in the earlier run |
+
+Chat e2e failures (7):
+- Right headline amount but the hint lists a second fact that is omitted (3): `rent_amount`
+  (date), `grocery_vat` (total), `mobile_vat` (total). Metric/hint strictness, not wrong answers.
+- `school_fee_total`: total correct, school name/breakdown missing (similar, partly strict).
+- `daraz_discount`: answer contained meaningless characters/ellipses (relevancy 0.5): worth
+  reading the raw answer.
+- Real: `romanized_rent` (says no rent info) and `devanagari_net_salary` (gross instead of net).
+- `refuse_bank_balance` and `refuse_landlord_phone` both **passed** this run (they failed
+  before the scope-prompt change; single runs are noisy, so treat as improved not solved).
+
+Retrieval failures (all reproduced in every run):
+- Roman-Nepali queries: `romanized_rent`, `romanized_electricity`, `romanized_dashain` miss the
+  right document in the top 6 and score 0.0 / 0.25 context precision.
+- English misses: `clinic_total`, `mobile_vat`.
+- Out-of-scope leak: the fuel question matches 'NEA electricity' at cosine distance 0.456 (> 0.5
+  required).
+
+Numbers to quote: extraction ~87% field accuracy on 5 labelled bills; retrieval hit rate in the
+top 6 about 83% (24/29); chat end-to-end 25/32 (78%) under an automatic judge. Roman-Nepali
+retrieval is the main known weakness.
+
 ## How to rerun with a log
 
 The 28 failing/erroring test ids from the first run are in
