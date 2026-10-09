@@ -55,4 +55,14 @@ def parse_date_any(text: str) -> tuple[dt.date, str | None]:
     return dt.date(y, mo, d), None
 
 
+def month_bounds(y: int, m: int) -> tuple[dt.date, dt.date]:
+    """First and last AD day (inclusive) of BS month (y, m)."""
+    start = bs_to_ad(y, m, 1)
+    ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
+    return start, bs_to_ad(ny, nm, 1) - dt.timedelta(days=1)
 
+
+def today_bs() -> tuple[int, int]:
+    """The current BS (year, month)."""
+    b = ad_to_bs(dt.date.today())
+    return b.year, b.month

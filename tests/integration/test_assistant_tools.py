@@ -324,3 +324,40 @@ async def test_actions_endpoint_rejects_bad_decisions(client, auth, other_auth, 
     assert (await _decide(client, other_auth, sid,
                           [(action["interrupt_id"], "confirm")])).status_code == 404
     assert await db.scalar(select(Expense.id).where(Expense.id == uuid.UUID(eid)))
+
+
+async def test_set_and_get_budgets_from_chat(client, auth, other_auth, agent):
+    agent([{"tools": [("set_budget", {"category": "dining", "amount": "8000",
+                                      "user_id": "nope"})]}, ANSWER])
+    _, r = await _ask(client, auth, "set my dining budget to 8000")
+    assert r.status_code == 200, r.text
+    [b] = (await client.get("/budgets", headers=auth)).json()
+    assert (b["category"], b["amount"]) == ("dining", "8000.00")
+    assert (await client.get("/budgets", headers=other_auth)).json() == []
+
+
+async def test_set_budget_rejects_bad_input(client, auth, agent):
+    agent([{"tools": [("set_budget", {"category": "dining", "amount": "-1"}),
+                      ("set_budget", {"category": "yachts", "amount": "100"})]}, ANSWER])
+    _, r = await _ask(client, auth, "set budgets")
+    assert r.status_code == 200
+    assert (await client.get("/budgets", headers=auth)).json() == []
+
+
+async def test_get_budgets_tool_reports_spend(client, auth, agent):
+    await client.put("/budgets/groceries", headers=auth, json={"amount": "1000"})
+    await add(client, auth, "900.00", day=dates_today())
+    seen = []
+
+    def step(messages):
+        seen.append(messages[-1]["content"])
+        return {"text": "done"}
+    agent([{"tools": [("get_budgets", {})]}, step])
+    _, r = await _ask(client, auth, "how is my grocery budget?")
+    assert r.status_code == 200, r.text
+    assert '"status": "warning"' in seen[0] and '"spent": "900.00"' in seen[0]
+
+
+def dates_today() -> dt.date:
+    from tests.integration.test_stats import bs_first_day
+    return bs_first_day(0)

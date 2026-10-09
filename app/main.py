@@ -3,7 +3,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, bills, chat, dates, documents, expenses, lookups, prize, stats
+from app.api import (
+    auth,
+    bills,
+    budgets,
+    chat,
+    dates,
+    documents,
+    expenses,
+    lookups,
+    prize,
+    stats,
+)
 from app.config import get_settings
 from app.observability import init_mlflow
 
@@ -22,7 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Total-Count"],
 )
-for r in (auth, expenses, bills, documents, stats, prize, chat, dates, lookups):
+for r in (auth, expenses, bills, documents, stats, budgets, prize, chat, dates, lookups):
     app.include_router(r.router)
 
 

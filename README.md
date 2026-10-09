@@ -145,6 +145,22 @@ record, edit and delete expenses.
   new messages in that session get `409`. A decision must cover every pending action.
   Once decided, the action's `decision` field is filled in on the original message.
 
+## Budgets
+
+A budget is a monthly spending limit for one category, checked against the current
+Bikram Sambat month (there is one budget per user and category, no history or rollover).
+
+- `GET /budgets` — the user's budgets, each with `amount`, `spent` this BS month, `remaining`
+  (negative when over), `percent` and `status`: `ok`, `warning` (80% or more used) or `over`
+  (more than 100%). Most-used first.
+- `PUT /budgets/{category}` with `{"amount": "8000"}` — create or replace a budget (amount > 0,
+  at most 2 decimals).
+- `DELETE /budgets/{category}` — remove one (`404` if none).
+
+The chat assistant has `get_budgets` and `set_budget` tools (setting runs straight away, no
+confirmation; deleting is Dashboard/API only). The Dashboard shows a "Monthly budgets" card
+with progress bars and an editor.
+
 ## Tests and linting
 
 ```sh
