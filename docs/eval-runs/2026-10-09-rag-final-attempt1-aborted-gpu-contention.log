@@ -1,0 +1,127 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/ubuntu/Desktop/presentation/nepal-fin-buddy-backend/.venv/bin/python
+rootdir: /home/ubuntu/Desktop/presentation/nepal-fin-buddy-backend
+configfile: pyproject.toml
+plugins: repeat-0.9.4, deepeval-4.2.8, anyio-4.15.1, rerunfailures-16.7, xdist-3.8.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=session
+collecting ... collected 95 items
+
+tests/eval/test_extraction_bench.py::test_per_bill_accuracy INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+PASSED
+tests/eval/test_extraction_bench.py::test_overall_accuracy PASSED
+tests/eval/test_extraction_bench.py::test_report 
+field               correct/total  accuracy   failing bills
+bill_date_bs           2/3       66.7%   csnepal-invoice
+vat_amount             2/3       66.7%   qfx-cinema-ticket
+bill_date_ad           5/5      100.0%   -
+bill_number            3/3      100.0%   -
+discount               3/3      100.0%   -
+items                  5/5      100.0%   -
+payment_method         5/5      100.0%   -
+subtotal               5/5      100.0%   -
+taxable_amount         2/2      100.0%   -
+total_amount           5/5      100.0%   -
+vendor_name            4/4      100.0%   -
+vendor_pan             3/3      100.0%   -
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[rent_amount] 2026-10-09 16:00:15 [info     ] reranker.loading               device=cuda model=BAAI/bge-reranker-v2-m3
+Loading weights:   0%|          | 0/393 [00:00<?, ?it/s]Loading weights: 100%|██████████| 393/393 [00:00<00:00, 18969.14it/s]
+
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[grocery_vat] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[internet_due] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[net_salary] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[biggest_grocery_bill] ERROR [deepeval.retry.openrouter] call timed out after 88.5s (per attempt). Increase DEEPEVAL_PER_ATTEMPT_TIMEOUT_SECONDS_OVERRIDE (None disables) or reduce work per attempt. Retrying: 1 time(s)...
+INFO  [deepeval.retry.openrouter] Retrying in 1.404678665620223 s (attempt 1) after TimeoutError('call timed out after 88.5s (per attempt). Increase DEEPEVAL_PER_ATTEMPT_TIMEOUT_SECONDS_OVERRIDE (None disables) or reduce work per attempt.')
+
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[electricity_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[mobile_vat] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[kalimati_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[restaurant_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[restaurant_service_charge] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[daraz_discount] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[daraz_payment_method] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[pathao_fare] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[clinic_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[school_fee_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[internet_plan] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[line_item_cooking_oil] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[salary_ssf] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[salary_tds] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[payment_method_bhatbhateni] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[bigmart_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[bigmart_vat_not_bhatbhateni] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[lookup_by_bill_number] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[lookup_by_pan] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_rent] 
+FAILED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_electricity] 
+FAILED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[romanized_dashain] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[devanagari_dashain] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_context_precision_recall[devanagari_net_salary] 
+PASSED
+tests/eval/test_rag_eval.py::TestRetrievalQuality::test_refusal_case_retrieves_nothing_strongly_relevant FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[rent_amount] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[grocery_vat] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[internet_due] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[net_salary] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[biggest_grocery_bill] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[missing_info_refusal] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[electricity_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[mobile_vat] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[kalimati_total] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[restaurant_total] 2026-10-09 16:24:01 [warning  ] rag.rerank_failed              error='CUDA error: CUBLAS_STATUS_ALLOC_FAILED when calling `cublasCreate(handle)`'
+
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[restaurant_service_charge] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[daraz_discount] 
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[daraz_payment_method] 2026-10-09 16:27:11 [warning  ] rag.rerank_failed              error='CUDA error: CUBLAS_STATUS_ALLOC_FAILED when calling `cublasCreate(handle)`'
+
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[pathao_fare] 2026-10-09 16:27:47 [warning  ] rag.rerank_failed              error='CUDA error: CUBLAS_STATUS_ALLOC_FAILED when calling `cublasCreate(handle)`'
+
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[clinic_total] 2026-10-09 16:28:24 [warning  ] rag.rerank_failed              error='CUDA error: CUBLAS_STATUS_ALLOC_FAILED when calling `cublasCreate(handle)`'
+
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[school_fee_total] 
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[internet_plan] 

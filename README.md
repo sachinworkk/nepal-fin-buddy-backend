@@ -169,6 +169,9 @@ uv run pytest tests/eval/test_rag_eval.py -m live_llm -k TestRetrievalQuality -x
 Use `-v` to see test names while it runs; with `-q` failures only show as `F`. For tracing
 the app's LLM calls and chat turns, see [MLflow monitoring](#mlflow-monitoring).
 
+Results, known failures and the extraction benchmark number are logged in
+[docs/eval-results.md](docs/eval-results.md).
+
 ## Configuration reference
 
 | Variable | Purpose |

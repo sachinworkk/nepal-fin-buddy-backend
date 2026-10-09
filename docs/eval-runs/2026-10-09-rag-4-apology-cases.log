@@ -1,0 +1,24 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/ubuntu/Desktop/presentation/nepal-fin-buddy-backend/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/ubuntu/Desktop/presentation/nepal-fin-buddy-backend
+configfile: pyproject.toml
+plugins: repeat-0.9.4, deepeval-4.2.8, anyio-4.15.1, rerunfailures-16.7, xdist-3.8.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=session
+collecting ... collected 62 items / 58 deselected / 4 selected
+
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[salary_tds] INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+
+ANSWER[salary_tds] cites=0: "I'm sorry, I don't have any information about your salary or any tax deductions from it. You can upload your salary slip or relevant documents, and then I can help you find that information."
+
+PASSED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[devanagari_net_salary] 
+ANSWER[devanagari_net_salary] cites=0: "I'm sorry, I can only help with questions about your bills, documents, expenses and finances."
+
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_bank_balance] 
+ANSWER[refuse_bank_balance] cites=0: "I'm sorry, I can only help with questions about your bills, documents, expenses and finances."
+
+FAILED
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_landlord_phone] 

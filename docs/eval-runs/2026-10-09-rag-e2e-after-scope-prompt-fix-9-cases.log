@@ -1,0 +1,240 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/ubuntu/Desktop/presentation/nepal-fin-buddy-backend/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/ubuntu/Desktop/presentation/nepal-fin-buddy-backend
+configfile: pyproject.toml
+plugins: repeat-0.9.4, deepeval-4.2.8, anyio-4.15.1, rerunfailures-16.7, xdist-3.8.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=session
+collecting ... collected 62 items / 53 deselected / 9 selected
+
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[rent_amount] FAILED [ 11%]
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[missing_info_refusal] PASSED [ 22%]
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[line_item_cooking_oil] PASSED [ 33%]
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[salary_ssf] PASSED [ 44%]
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[romanized_rent] FAILED [ 55%]
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[devanagari_dashain] PASSED [ 66%]
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[devanagari_net_salary] FAILED [ 77%]
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_bank_balance] FAILED [ 88%]
+tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_landlord_phone] PASSED [100%]Running teardown with pytest sessionfinish...
+
+
+=================================== FAILURES ===================================
+______________ TestEndToEnd.test_chat_answer_quality[rent_amount] ______________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7230b0798530>
+case = {'id': 'rent_amount', 'question': 'How much rent did I pay and to whom?', 'must_retrieve': 'Rent note', 'expected_answer_hint': 'You paid Rs. 20,000 rent to Kumar Shrestha for Shrawan 2083.'}
+chat_client = <function chat_client.<locals>.ask at 0x7230ae8853a0>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7230ae880a40>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+        correctness = GEval(
+            name="Correctness", model=judge, threshold=0.7,
+            criteria=(
+                "Judge whether the actual output gives the same answer as the expected output. "
+                "The headline fact(s) in the expected output (the main amount, name or date the "
+                "question asks for) must be present and must not be contradicted. Formatting "
+                "(Rs. 20,000 vs Rs. 20,000.00, Nepali vs Western numerals), synonyms "
+                "(Supermarket vs grocery) and extra detail are fine, and so is leaving out "
+                "secondary details. Fail an output that gives a wrong or invented value, or the "
+                "wrong figure (e.g. gross instead of net). If the expected output says the "
+                "information is not available, the actual output must say it has no such "
+                "information or record; a generic refusal to help, or any invented value, fails."
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
+        )
+        metrics = [FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True), correctness]
+        if case["must_retrieve"]:
+            # A correct refusal is inherently "irrelevant" to the question, so only score
+            # relevancy where the answer is in the corpus.
+            metrics.append(AnswerRelevancyMetric(model=judge, threshold=0.7))
+>       assert_test(tc, metrics)
+
+tests/eval/test_rag_eval.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='How much rent did I pay and to whom?', actual_output='You paid Rs. 20,000.00 in rent to Kumar Shres...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x722c1c2e7b60>, <deepeval.metrics.g_eval.g_...t 0x7230b1f0ecf0>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x722f2dbdade0>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Correctness [GEval] (score: 0.5, threshold: 0.7, strict: False, error: None, reason: The core facts of amount (Rs. 20,000) and recipient (Kumar Shrestha) match, but the expected date "for Shrawan 2083" is absent from the actual output, so the response does not fully convey the headline information.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+----------------------------- Captured stdout call -----------------------------
+2026-10-09 14:07:36 [info     ] reranker.loading               device=cuda model=BAAI/bge-reranker-v2-m3
+
+----------------------------- Captured stderr call -----------------------------
+Loading weights:   0%|          | 0/393 [00:00<?, ?it/s]Loading weights: 100%|██████████| 393/393 [00:00<00:00, 19855.23it/s]
+____________ TestEndToEnd.test_chat_answer_quality[romanized_rent] _____________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7230b0799e80>
+case = {'id': 'romanized_rent', 'question': 'Maile ghar bhada kati tirein?', 'must_retrieve': 'Rent note', 'expected_answer_hint': 'You paid Rs. 20,000 rent for Shrawan 2083.'}
+chat_client = <function chat_client.<locals>.ask at 0x722c1c2162a0>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7230ae880a40>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+        correctness = GEval(
+            name="Correctness", model=judge, threshold=0.7,
+            criteria=(
+                "Judge whether the actual output gives the same answer as the expected output. "
+                "The headline fact(s) in the expected output (the main amount, name or date the "
+                "question asks for) must be present and must not be contradicted. Formatting "
+                "(Rs. 20,000 vs Rs. 20,000.00, Nepali vs Western numerals), synonyms "
+                "(Supermarket vs grocery) and extra detail are fine, and so is leaving out "
+                "secondary details. Fail an output that gives a wrong or invented value, or the "
+                "wrong figure (e.g. gross instead of net). If the expected output says the "
+                "information is not available, the actual output must say it has no such "
+                "information or record; a generic refusal to help, or any invented value, fails."
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
+        )
+        metrics = [FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True), correctness]
+        if case["must_retrieve"]:
+            # A correct refusal is inherently "irrelevant" to the question, so only score
+            # relevancy where the answer is in the corpus.
+            metrics.append(AnswerRelevancyMetric(model=judge, threshold=0.7))
+>       assert_test(tc, metrics)
+
+tests/eval/test_rag_eval.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='Maile ghar bhada kati tirein?', actual_output='माफ गर्नुहोला, तपाईंको बिल, कागजात वा खर्चहरूमा घरभा...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x722c1c222bd0>, <deepeval.metrics.g_eval.g_...t 0x722c1c244ce0>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x72309f358c80>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Correctness [GEval] (score: 0.0, threshold: 0.7, strict: False, error: None, reason: The expected headline facts are the rent amount (Rs. 20,000) and the period (Shrawan 2083). The actual output says there is no information about rent, directly contradicting the expected details and inventing a lack of data, which violates steps 2, 3, and 4.), Answer Relevancy (score: 0.5, threshold: 0.7, strict: False, error: None, reason: The score is 0.50 because the reply consisted mainly of an apology and failed to provide the rent amount asked, so a large portion of the answer was irrelevant.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+----------------------------- Captured stdout call -----------------------------
+
+_________ TestEndToEnd.test_chat_answer_quality[devanagari_net_salary] _________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7230b07984a0>
+case = {'id': 'devanagari_net_salary', 'question': 'मेरो खुद तलब कति थियो?', 'must_retrieve': 'Salary slip Shrawan', 'expected_answer_hint': 'Net salary was Rs. 98,300.00.'}
+chat_client = <function chat_client.<locals>.ask at 0x722c1c1c28e0>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7230ae880a40>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+        correctness = GEval(
+            name="Correctness", model=judge, threshold=0.7,
+            criteria=(
+                "Judge whether the actual output gives the same answer as the expected output. "
+                "The headline fact(s) in the expected output (the main amount, name or date the "
+                "question asks for) must be present and must not be contradicted. Formatting "
+                "(Rs. 20,000 vs Rs. 20,000.00, Nepali vs Western numerals), synonyms "
+                "(Supermarket vs grocery) and extra detail are fine, and so is leaving out "
+                "secondary details. Fail an output that gives a wrong or invented value, or the "
+                "wrong figure (e.g. gross instead of net). If the expected output says the "
+                "information is not available, the actual output must say it has no such "
+                "information or record; a generic refusal to help, or any invented value, fails."
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
+        )
+        metrics = [FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True), correctness]
+        if case["must_retrieve"]:
+            # A correct refusal is inherently "irrelevant" to the question, so only score
+            # relevancy where the answer is in the corpus.
+            metrics.append(AnswerRelevancyMetric(model=judge, threshold=0.7))
+>       assert_test(tc, metrics)
+
+tests/eval/test_rag_eval.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='मेरो खुद तलब कति थियो?', actual_output='तपाईंको Shrawan 2083 को तलब (Gross salary) Rs. 1,20,000.00 ...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x722c1c25a180>, <deepeval.metrics.g_eval.g_...t 0x722c1c258170>, <deepeval.metrics.answer_relevancy.answer_relevancy.AnswerRelevancyMetric object at 0x722c1c2594c0>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Correctness [GEval] (score: 0.0, threshold: 0.7, strict: False, error: None, reason: The expected headline fact is the net salary of Rs. 98,300.00, but the actual output provides a gross salary of Rs. 1,20,000.00, which does not match the expected value and introduces a different figure, violating the alignment steps.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+----------------------------- Captured stdout call -----------------------------
+
+__________ TestEndToEnd.test_chat_answer_quality[refuse_bank_balance] __________
+
+self = <tests.eval.test_rag_eval.TestEndToEnd object at 0x7230b0798470>
+case = {'id': 'refuse_bank_balance', 'question': 'What is my current bank account balance?', 'must_retrieve': None, 'expected_answer_hint': "I don't have information about your current bank balance in your documents."}
+chat_client = <function chat_client.<locals>.ask at 0x722c1c09eac0>
+judge = <deepeval.models.llms.openrouter_model.OpenRouterModel object at 0x7230ae880a40>
+
+    @pytest.mark.parametrize("case", golden_cases(), ids=lambda c: c["id"])
+    async def test_chat_answer_quality(self, case, chat_client, judge):
+        answer, snippets = await chat_client(case["question"])
+        tc = LLMTestCase(
+            input=case["question"], actual_output=answer,
+            expected_output=case["expected_answer_hint"],
+            retrieval_context=snippets,
+        )
+        correctness = GEval(
+            name="Correctness", model=judge, threshold=0.7,
+            criteria=(
+                "Judge whether the actual output gives the same answer as the expected output. "
+                "The headline fact(s) in the expected output (the main amount, name or date the "
+                "question asks for) must be present and must not be contradicted. Formatting "
+                "(Rs. 20,000 vs Rs. 20,000.00, Nepali vs Western numerals), synonyms "
+                "(Supermarket vs grocery) and extra detail are fine, and so is leaving out "
+                "secondary details. Fail an output that gives a wrong or invented value, or the "
+                "wrong figure (e.g. gross instead of net). If the expected output says the "
+                "information is not available, the actual output must say it has no such "
+                "information or record; a generic refusal to help, or any invented value, fails."
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
+        )
+        metrics = [FaithfulnessMetric(model=judge, threshold=0.8, include_reason=True), correctness]
+        if case["must_retrieve"]:
+            # A correct refusal is inherently "irrelevant" to the question, so only score
+            # relevancy where the answer is in the corpus.
+            metrics.append(AnswerRelevancyMetric(model=judge, threshold=0.7))
+>       assert_test(tc, metrics)
+
+tests/eval/test_rag_eval.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+test_case = LLMTestCase(input='What is my current bank account balance?', actual_output="I'm sorry, I can only help with questions...resources_called=None, mcp_prompts_called=None, custom_column_key_values=None, expectations=None, expected_labels=None)
+metrics = [<deepeval.metrics.faithfulness.faithfulness.FaithfulnessMetric object at 0x722c1c118050>, <deepeval.metrics.g_eval.g_eval.GEval object at 0x722c1c11adb0>]
+golden = None, run_async = True, classifiers = None
+
+>   ???
+E   AssertionError: Metrics: Correctness [GEval] (score: 0.2, threshold: 0.7, strict: False, error: None, reason: The expected output explicitly states lack of information about the current bank balance, while the actual output gives a generic limitation about topics it can help with and does not mention the bank balance fact, so the key fact is missing and not matched.) failed.
+
+/home/ubuntu/Desktop/projects/nepal-fin-buddy-backend/.venv/lib/python3.12/site-packages/deepeval/evaluate/evaluate.py:209: AssertionError
+----------------------------- Captured stdout call -----------------------------
+
+=============================== warnings summary ===============================
+tests/eval/test_rag_eval.py:27
+tests/eval/test_rag_eval.py:27
+  /home/ubuntu/Desktop/presentation/nepal-fin-buddy-backend/tests/eval/test_rag_eval.py:27: DeprecationWarning: 'LLMTestCaseParams' is deprecated and will be removed in a future release. Use 'SingleTurnParams' instead.
+    from deepeval.test_case import LLMTestCase, LLMTestCaseParams
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[rent_amount]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[romanized_rent]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[devanagari_net_salary]
+FAILED tests/eval/test_rag_eval.py::TestEndToEnd::test_chat_answer_quality[refuse_bank_balance]
+====== 4 failed, 5 passed, 53 deselected, 2 warnings in 399.88s (0:06:39) ======
