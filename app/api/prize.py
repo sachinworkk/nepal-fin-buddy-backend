@@ -6,13 +6,19 @@ from typing import Annotated
 
 import httpx
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, get_owned
 from app.config import get_settings
 from app.models import Bill, PrizeEnrollment
-from app.prize.client import PrizeError, fiscal_years, get_prize_client, submit_enrollment
+from app.prize.client import (
+    PrizeError,
+    fiscal_years,
+    get_prize_client,
+    submit_enrollment,
+    winners,
+)
 from app.prize.turnstile import TurnstileError, verify_turnstile
 from app.prize.validation import validate_fields
 from app.schemas.prize import (
@@ -23,6 +29,7 @@ from app.schemas.prize import (
     PrizeEnrollmentPatchIn,
     PrizeHandoffIn,
     PrizeHandoffOut,
+    PrizeWinOut,
 )
 from app.services.prize import eligible_bills
 
@@ -34,6 +41,10 @@ PrizeClient = Annotated[httpx.AsyncClient, Depends(get_prize_client)]
 _FISCAL_TTL_SECONDS = 3600.0
 _fiscal_cache: dict | None = None
 _fiscal_cached_at = 0.0
+
+_WINNERS_TTL_SECONDS = 300.0
+_MAX_WINNER_PAGES = 20
+_winners_cache: dict[tuple, tuple[float, dict]] = {}
 
 # user_id -> last monotonic time an IRD submission was attempted. IRD throttles
 # bursts with a misleading "form expired" error; we space submissions out instead.
@@ -63,6 +74,91 @@ async def _cached_fiscal_years(http: httpx.AsyncClient) -> dict:
 async def prize_fiscal_years(user: CurrentUser, http: PrizeClient) -> dict:
     """Proxy the portal's fiscal-year list (one hour in-memory cache)."""
     return await _cached_fiscal_years(http)
+
+
+_WINNERS_PAGE_MAX = 25  # the portal's own cap on ``limit``
+_WINNERS_CACHE_MAX = 200
+_ID = r"^[A-Za-z0-9_-]{1,64}$"
+
+
+async def _cached_winners(http: httpx.AsyncClient, limit: int, offset: int, **filters) -> dict:
+    key = (limit, offset, tuple(sorted(filters.items())))
+    hit = _winners_cache.get(key)
+    if hit and time.monotonic() - hit[0] <= _WINNERS_TTL_SECONDS:
+        return hit[1]
+    page = await winners(http, limit, offset, **filters)
+    if len(_winners_cache) >= _WINNERS_CACHE_MAX:
+        _winners_cache.clear()
+    _winners_cache[key] = (time.monotonic(), page)
+    return page
+
+
+@router.get("/winners")
+async def prize_winners(
+    user: CurrentUser, http: PrizeClient,
+    limit: Annotated[int, Query(ge=1, le=_WINNERS_PAGE_MAX)] = 6,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    fiscal_year_code: Annotated[str | None, Query(pattern=_ID)] = None,
+    category_id: Annotated[str | None, Query(pattern=_ID)] = None,
+    date_from: Annotated[dt.date | None, Query(alias="from")] = None,
+    date_to: Annotated[dt.date | None, Query(alias="to")] = None,
+) -> dict:
+    """Proxy the portal's published draws (five minute cache per page and filter set).
+
+    The response also lists every fiscal year (with winner counts) and category, which is what
+    a filter UI needs. ``from``/``to`` match draws whose eligibility window lies inside them.
+    """
+    try:
+        return await _cached_winners(
+            http, limit, offset, fiscal_year_code=fiscal_year_code, category_id=category_id,
+            date_from=date_from, date_to=date_to)
+    except PrizeError as e:
+        raise HTTPException(e.status_code or status.HTTP_502_BAD_GATEWAY, e.message) from None
+
+
+@router.get("/my-wins", response_model=list[PrizeWinOut])
+async def my_wins(user: CurrentUser, session: SessionDep, http: PrizeClient):
+    """The user's submitted coupons that appear in any published draw, newest draw first."""
+    rows = list(await session.scalars(
+        select(PrizeEnrollment).where(
+            PrizeEnrollment.user_id == user.id,
+            PrizeEnrollment.status == "submitted",
+            PrizeEnrollment.prize_coupon_number.is_not(None),
+        )
+    ))
+    mine = {r.prize_coupon_number: r for r in rows}
+    if not mine:
+        return []
+    wins: list[PrizeWinOut] = []
+    offset = 0
+    try:
+        for _ in range(_MAX_WINNER_PAGES):
+            page = await _cached_winners(http, _WINNERS_PAGE_MAX, offset)
+            for draw in page.get("draws", []):
+                for w in draw.get("winners", []):
+                    enr = mine.get(w.get("prize_coupon_number"))
+                    if enr is None:
+                        continue
+                    wins.append(PrizeWinOut(
+                        prize_coupon_number=enr.prize_coupon_number, enrollment_id=enr.id,
+                        bill_number=enr.bill_number, bill_date=enr.bill_date,
+                        draw_id=draw["draw_id"], draw_title_en=draw.get("title_en", ""),
+                        draw_title_ne=draw.get("title_ne"),
+                        category_title_en=draw.get("category_title_en", ""),
+                        category_title_ne=draw.get("category_title_ne"),
+                        winner_rank=w.get("winner_rank", 0),
+                        published_at=draw.get("published_at"),
+                        claim_deadline=draw.get("claim_deadline"),
+                        claim_open=bool(draw.get("claim_open")),
+                    ))
+            step = len(page.get("draws", []))
+            if not page.get("has_more") or step == 0:
+                break
+            offset += step
+    except PrizeError as e:
+        raise HTTPException(e.status_code or status.HTTP_502_BAD_GATEWAY, e.message) from None
+    return sorted(wins, key=lambda w: w.published_at or dt.datetime.min.replace(tzinfo=dt.UTC),
+                  reverse=True)
 
 
 def _check_form_started_at(form_started_at: int) -> None:

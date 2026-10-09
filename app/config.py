@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     rerank_enabled: bool = True
     rerank_max_candidates: int = 24
 
-    # prize.ird.gov.np ("test" uses the local mock; "live" is refused unless APP_ENV=production)
+    # prize.ird.gov.np ("test" uses the local mock; "live" talks to the real portal)
     prize_mode: str = "test"
     prize_mock_url: str = "http://localhost:8002/api/v1"
     prize_live_url: str = "https://prize.ird.gov.np/api/v1"
@@ -56,8 +56,6 @@ class Settings(BaseSettings):
     @property
     def prize_base_url(self) -> str:
         if self.prize_mode == "live":
-            if self.app_env != "production":
-                raise RuntimeError("PRIZE_MODE=live is refused unless APP_ENV=production")
             return self.prize_live_url
         return self.prize_mock_url
 

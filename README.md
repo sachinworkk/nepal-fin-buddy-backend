@@ -114,8 +114,8 @@ Backend behaviour:
 - Duplicate bills (same user + PAN + bill number + date, already accepted) get `409`.
 - Portal rejections pass through as `400` with the portal's message; transport/5xx
   errors become `502`. Failed attempts are still recorded with `last_error`.
-- `PRIZE_MODE=test` (default) targets the local mock; `live` is refused unless
-  `APP_ENV=production`.
+- `PRIZE_MODE=test` (default) targets the local mock; `live` targets the real portal
+  from any `APP_ENV`.
 
 `GET /prize/fiscal-years` proxies the portal's fiscal-year list (1h cache).
 
@@ -180,7 +180,7 @@ the app's LLM calls and chat turns, see [MLflow monitoring](#mlflow-monitoring).
 | `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL` | LLM provider access |
 | `EXTRACTION_MODEL`, `CHAT_MODEL` | Model names used for extraction and chat |
 | `EMBED_MODEL`, `EMBED_DIM` | Embedding model and dimension |
-| `PRIZE_MODE` | `test` (mock portal) or `live` (only allowed when `APP_ENV=production`) |
+| `PRIZE_MODE` | `test` (mock portal) or `live` (real portal) |
 | `PRIZE_MOCK_URL`, `PRIZE_LIVE_URL` | Prize portal endpoints |
 | `PRIZE_TURNSTILE_SITEKEY` | Public sitekey the frontend renders the Turnstile widget with |
 | `PRIZE_MIN_FORM_AGE_SECONDS`, `PRIZE_MAX_FORM_AGE_SECONDS` | Allowed age of `form_started_at` |
