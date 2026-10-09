@@ -6,6 +6,7 @@ caller uses app.core.dates.parse_date_any to normalise.
 """
 
 import base64
+import datetime as dt
 import json
 import re
 from collections.abc import Mapping
@@ -17,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import llm
 from app.config import get_settings
 from app.core.categories import Category
+from app.core.dates import looks_like_bs, to_ascii_digits
 from app.core.payment_methods import PaymentMethod
 from app.llm import LlmError
 
@@ -29,7 +31,8 @@ no code fences — with these keys:
 
 {
   "vendor_name": string|null,
-  "vendor_pan": string|null,          // digits only, the seller's PAN
+  "vendor_pan": string|null,          // digits only, the seller's PAN or VAT \
+number; never a DDA, licence or registration number
   "bill_number": string|null,
   "bill_date_bs": string|null,        // exactly as printed, e.g. "2082.05.02" \
 (Y-M-D in Bikram Sambat). Null if not a BS date.
@@ -42,7 +45,10 @@ currency symbols
   "total_amount": string|null,
   "payment_method": "cash"|"card"|"qr"|"cheque"|null,  // how the bill was paid: \
 printed words ("Cash", "Visa") or a payment logo/QR code on the bill (eSewa, Khalti, \
-Fonepay, a bank QR -> "qr"; Visa/Mastercard -> "card"); null if there is no sign
+Fonepay, a bank QR -> "qr"; Visa/Mastercard -> "card"); null if there is no sign, \
+or if several methods are listed as options (e.g. "Cash/Credit/Cheque") with none \
+marked as the one used. Never infer it from the type of shop or bill: no printed \
+word or logo means null
   "category": "groceries"|"dining"|"transport"|"utilities"|"rent"|"medical"|\
 "education"|"shopping"|"entertainment"|"fees"|"gifts"|"other",  // your best guess \
 from the vendor and items; "other" if unclear
@@ -57,8 +63,14 @@ Rules:
 "correct" them.
 - Amounts: strip currency symbols (रू / Rs / NPR) and thousand separators, keep \
 decimals.
-- If a field is not printed, use null. Do not guess, except payment_method (logos/QR \
-count) and category (always infer one)."""
+- Dates: a Bikram Sambat (BS) date has a year of about 2070-2090 and is often labelled \
+"Miti"/"Mitti"/"मिति"; put it in bill_date_bs. A Gregorian (AD) date has a year of \
+about 2000-2030; put it in bill_date_ad as ISO YYYY-MM-DD (a second date \
+printed beside a BS date, e.g. "(09/22/26)", is the AD date in month/day/year order: \
+write it as "2026-09-22"). If both are printed, fill both. Never convert \
+between the calendars yourself: a date that is not printed stays null.
+- If a field is not printed, use null. Do not guess, except category (always infer one); \
+payment_method only counts printed words or logos/QR."""
 
 _KEYS = {
     "vendor_name", "vendor_pan", "bill_number", "bill_date_bs", "bill_date_ad",
@@ -132,6 +144,41 @@ def _clean_items(items) -> list[dict] | None:
     return out or None
 
 
+_DMY_RE = re.compile(r"^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$")
+
+
+def _dmy_to_iso(text: str) -> str | None:
+    """'09/22/26' or '24/02/2023' -> ISO date; the day/month order is inferred."""
+    m = _DMY_RE.match(text.strip())
+    if not m:
+        return None
+    a, b, y = int(m[1]), int(m[2]), int(m[3])
+    y += 2000 if y < 100 else 0
+    month, day = (a, b) if a <= 12 else (b, a)
+    try:
+        return dt.date(y, month, day).isoformat()
+    except ValueError:
+        return None
+
+
+def _fix_dates(out: dict) -> None:
+    """Repair a BS date the model put in the AD field, and an AD date left in the BS field."""
+    bs, ad, stray = out.get("bill_date_bs"), out.get("bill_date_ad"), None
+    bs_ok = bool(bs) and looks_like_bs_string(bs)
+    if ad and looks_like_bs_string(ad) and not bs_ok:
+        bs, ad, stray = ad, None, bs  # swapped: the old BS slot may hold the AD date
+    elif bs and not bs_ok:
+        bs, stray = None, bs
+    if stray and not ad:
+        ad = _dmy_to_iso(stray)
+    out["bill_date_bs"], out["bill_date_ad"] = bs, ad
+
+
+def looks_like_bs_string(text: str) -> bool:
+    m = re.match(r"\s*(\d{4})\D", to_ascii_digits(text))
+    return bool(m) and looks_like_bs(int(m[1]))
+
+
 def parse_extraction(text: str) -> dict:
     """Parse the model's JSON answer into a cleaned extraction dict."""
     m = _OBJ_RE.search(text)
@@ -150,6 +197,7 @@ def parse_extraction(text: str) -> dict:
     out["category"] = _clean_category(out["category"])
     out["items"] = _clean_items(raw.get("items"))
     out["ocr_text"] = _clean(raw.get("ocr_text"))
+    _fix_dates(out)
     return out
 
 
