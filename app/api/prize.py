@@ -14,10 +14,8 @@ from app.config import get_settings
 from app.models import Bill, PrizeEnrollment
 from app.prize.client import (
     PrizeError,
-    fiscal_years,
     get_prize_client,
     submit_enrollment,
-    winners,
 )
 from app.prize.turnstile import TurnstileError, verify_turnstile
 from app.prize.validation import validate_fields
@@ -29,8 +27,10 @@ from app.schemas.prize import (
     PrizeEnrollmentPatchIn,
     PrizeHandoffIn,
     PrizeHandoffOut,
+    PrizeSummaryOut,
     PrizeWinOut,
 )
+from app.services import prize as prize_service
 from app.services.prize import eligible_bills
 
 log = structlog.get_logger()
@@ -38,13 +38,7 @@ router = APIRouter(prefix="/prize", tags=["prize"])
 
 PrizeClient = Annotated[httpx.AsyncClient, Depends(get_prize_client)]
 
-_FISCAL_TTL_SECONDS = 3600.0
-_fiscal_cache: dict | None = None
-_fiscal_cached_at = 0.0
-
-_WINNERS_TTL_SECONDS = 300.0
 _MAX_WINNER_PAGES = 20
-_winners_cache: dict[tuple, tuple[float, dict]] = {}
 
 # user_id -> last monotonic time an IRD submission was attempted. IRD throttles
 # bursts with a misleading "form expired" error; we space submissions out instead.
@@ -61,36 +55,14 @@ async def prize_config() -> PrizeConfigOut:
     )
 
 
-async def _cached_fiscal_years(http: httpx.AsyncClient) -> dict:
-    global _fiscal_cache, _fiscal_cached_at
-    now = time.monotonic()
-    if _fiscal_cache is None or now - _fiscal_cached_at > _FISCAL_TTL_SECONDS:
-        _fiscal_cache = await fiscal_years(http)
-        _fiscal_cached_at = now
-    return _fiscal_cache
-
-
 @router.get("/fiscal-years")
 async def prize_fiscal_years(user: CurrentUser, http: PrizeClient) -> dict:
     """Proxy the portal's fiscal-year list (one hour in-memory cache)."""
-    return await _cached_fiscal_years(http)
+    return await prize_service.cached_fiscal_years(http)
 
 
 _WINNERS_PAGE_MAX = 25  # the portal's own cap on ``limit``
-_WINNERS_CACHE_MAX = 200
 _ID = r"^[A-Za-z0-9_-]{1,64}$"
-
-
-async def _cached_winners(http: httpx.AsyncClient, limit: int, offset: int, **filters) -> dict:
-    key = (limit, offset, tuple(sorted(filters.items())))
-    hit = _winners_cache.get(key)
-    if hit and time.monotonic() - hit[0] <= _WINNERS_TTL_SECONDS:
-        return hit[1]
-    page = await winners(http, limit, offset, **filters)
-    if len(_winners_cache) >= _WINNERS_CACHE_MAX:
-        _winners_cache.clear()
-    _winners_cache[key] = (time.monotonic(), page)
-    return page
 
 
 @router.get("/winners")
@@ -109,11 +81,17 @@ async def prize_winners(
     a filter UI needs. ``from``/``to`` match draws whose eligibility window lies inside them.
     """
     try:
-        return await _cached_winners(
+        return await prize_service.cached_winners(
             http, limit, offset, fiscal_year_code=fiscal_year_code, category_id=category_id,
             date_from=date_from, date_to=date_to)
     except PrizeError as e:
         raise HTTPException(e.status_code or status.HTTP_502_BAD_GATEWAY, e.message) from None
+
+
+@router.get("/summary", response_model=PrizeSummaryOut)
+async def prize_summary(user: CurrentUser, session: SessionDep, http: PrizeClient):
+    """Bumper Draw card: days left to enter bills this fiscal year, your coupons, latest draw."""
+    return await prize_service.prize_summary(session, user.id, http)
 
 
 @router.get("/my-wins", response_model=list[PrizeWinOut])
@@ -133,7 +111,7 @@ async def my_wins(user: CurrentUser, session: SessionDep, http: PrizeClient):
     offset = 0
     try:
         for _ in range(_MAX_WINNER_PAGES):
-            page = await _cached_winners(http, _WINNERS_PAGE_MAX, offset)
+            page = await prize_service.cached_winners(http, _WINNERS_PAGE_MAX, offset)
             for draw in page.get("draws", []):
                 for w in draw.get("winners", []):
                     enr = mine.get(w.get("prize_coupon_number"))
@@ -309,11 +287,11 @@ async def list_eligible(user: CurrentUser, session: SessionDep, http: PrizeClien
     bills = await eligible_bills(session, user.id)
 
     try:
-        years = (await _cached_fiscal_years(http)).get("fiscal_years") or []
+        years = (await prize_service.cached_fiscal_years(http)).get("fiscal_years") or []
     except PrizeError:
         years = []  # the list is still useful without deadlines
 
-    today = dt.date.today()
+    today = prize_service.nepal_today()
     out = []
     for b in bills:
         fy = next((y for y in years

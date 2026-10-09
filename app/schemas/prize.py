@@ -105,3 +105,36 @@ class PrizeWinOut(BaseModel):
     published_at: dt.datetime | None
     claim_deadline: dt.datetime | None
     claim_open: bool
+
+
+class PrizeBumperDrawOut(BaseModel):
+    """The most recent published Bumper Prize draw."""
+
+    draw_id: str
+    title_en: str
+    title_ne: str | None
+    eligible_from: dt.date | None
+    eligible_to: dt.date | None
+    published_at: dt.datetime | None
+    claim_deadline: dt.datetime | None
+    claim_open: bool
+    winner_count: int
+
+
+class PrizeSummaryOut(BaseModel):
+    """Bumper-draw card: entry deadline for the active fiscal year and the user's standing.
+
+    The portal publishes when the fiscal year ends (the last day to enter bills), not the date
+    of the bumper draw itself, so this is an entry deadline.
+    """
+
+    fiscal_year_code: str | None = None
+    fiscal_year_name: str | None = None
+    entry_deadline: dt.date | None = None
+    days_left: int | None = None
+    coupons_this_year: int = 0
+    eligible_this_year: int = 0
+    pending_handoffs: int = 0
+    latest_bumper: PrizeBumperDrawOut | None = None
+    bumper_prize_amount_npr: Decimal | None = Field(
+        default=None, description="Display-only; configured, the portal doesn't publish it")
