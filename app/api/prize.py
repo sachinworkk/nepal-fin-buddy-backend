@@ -90,7 +90,7 @@ async def prize_winners(
 
 @router.get("/summary", response_model=PrizeSummaryOut)
 async def prize_summary(user: CurrentUser, session: SessionDep, http: PrizeClient):
-    """Bumper Draw card: days left to enter bills this fiscal year, your coupons, latest draw."""
+    """IRD lottery card: days left to enter bills this fiscal year, your coupons, latest fortnightly draw (bumper + daily)."""
     return await prize_service.prize_summary(session, user.id, http)
 
 

@@ -158,9 +158,10 @@ async def list_prize_eligible_bills(tool_context: ToolContext) -> dict | str:
     Prize screen, not by you. Each bill's status is "ready_to_submit" (not started yet) or
     "awaiting_portal_submission" (prepared for the IRD portal, waiting for the user to finish
     submitting there and mark it submitted). The result also has the entry deadline and days left
-    to enter bills for this fiscal year's bumper draw ("entry_deadline", "days_left", omitted
-    if the portal is unreachable) and "coupons_this_year". The portal publishes the entry
-    deadline, not the date of the bumper draw itself; don't state a draw date."""
+    to enter bills for this fiscal year ("entry_deadline", "days_left", omitted if the portal
+    is unreachable) and "coupons_this_year". The IRD draw is held fortnightly and each draw
+    has both a bumper prize and daily prizes. The portal publishes the entry deadline, not
+    the date of any draw; don't state a draw date."""
     with trace_span("tool.list_prize_eligible_bills", span_type="TOOL"):
         async with SessionLocal() as s:
             bills = await eligible_bills(s, _user(tool_context))

@@ -102,10 +102,11 @@ def active_fiscal_year(years: list[dict]) -> dict | None:
     return next((y for y in years if y.get("status") == "ACTIVE"), None)
 
 
-async def _latest_bumper(http: httpx.AsyncClient) -> PrizeBumperDrawOut | None:
-    page = await cached_winners(http, 1, 0)
-    cat = next((c for c in page.get("categories", [])
-                if "bumper" in (c.get("title_en") or "").lower()), None)
+async def _latest_category_draw(
+    http: httpx.AsyncClient, categories: list[dict], keyword: str
+) -> PrizeBumperDrawOut | None:
+    """Latest draw of the category whose title contains `keyword` ("bumper" or "daily")."""
+    cat = next((c for c in categories if keyword in (c.get("title_en") or "").lower()), None)
     if cat is None:
         return None
     draws = (await cached_winners(http, 1, 0, category_id=cat["category_id"])).get("draws", [])
@@ -124,7 +125,8 @@ async def prize_summary(
     session: AsyncSession, user_id: uuid.UUID, http: httpx.AsyncClient
 ) -> PrizeSummaryOut:
     """Entry deadline for the active fiscal year plus the user's standing. The deadline and
-    latest bumper draw come from the portal and are left empty if it's unreachable."""
+    the latest fortnightly draw (bumper and daily prizes) come from the portal and are left
+    empty if it's unreachable."""
     out = PrizeSummaryOut(bumper_prize_amount_npr=get_settings().prize_bumper_amount_npr)
     try:
         years = (await cached_fiscal_years(http)).get("fiscal_years") or []
@@ -142,9 +144,13 @@ async def prize_summary(
             PrizeEnrollment.bill_date.between(start, end)))))
         out.eligible_this_year = sum(
             1 for b in await eligible_bills(session, user_id) if start <= b.bill_date_ad <= end)
+    out.coupons_all_time = len(list(await session.scalars(select(PrizeEnrollment.id).where(
+        PrizeEnrollment.user_id == user_id, PrizeEnrollment.status == "submitted"))))
     out.pending_handoffs = len(await pending_handoffs(session, user_id))
     try:
-        out.latest_bumper = await _latest_bumper(http)
+        categories = (await cached_winners(http, 1, 0)).get("categories", [])
+        out.latest_bumper = await _latest_category_draw(http, categories, "bumper")
+        out.latest_daily = await _latest_category_draw(http, categories, "daily")
     except PrizeError:
         pass
     return out

@@ -454,10 +454,13 @@ async def test_summary_counts_and_deadline(client, portal, auth, other_auth, db,
     assert out["fiscal_year_code"] == "2083-84"
     assert out["entry_deadline"] == "2027-07-16" and out["days_left"] == 278
     assert out["coupons_this_year"] == 1
+    assert out["coupons_all_time"] == 1
     assert out["eligible_this_year"] == 1  # OPEN-1; OLD-1 is from the closed fiscal year
     assert out["pending_handoffs"] == 0
     assert out["latest_bumper"]["draw_id"] == "draw_mock_bumper"
     assert out["latest_bumper"]["winner_count"] == 1
+    assert out["latest_daily"]["draw_id"] == "draw_mock_daily"
+    assert out["latest_daily"]["winner_count"] == 3
     assert Decimal(out["bumper_prize_amount_npr"]) == 10000000
 
     other = (await client.get("/prize/summary", headers=other_auth)).json()
@@ -494,7 +497,8 @@ async def test_summary_portal_down(client, auth, db):
     assert r.status_code == 200, r.text
     out = r.json()
     assert out["days_left"] is None and out["entry_deadline"] is None
-    assert out["latest_bumper"] is None and out["pending_handoffs"] == 0
+    assert out["latest_bumper"] is None and out["latest_daily"] is None
+    assert out["pending_handoffs"] == 0
 
 
 async def test_summary_requires_auth(client, portal):

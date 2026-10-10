@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     # Minimum seconds between two submissions by the same user; IRD throttles bursts
     # (they surface as misleading "form expired" errors).
     prize_user_submit_interval_seconds: float = 8.0
-    # Optional bumper prize amount (NPR) for the Bumper Draw card (the portal publishes none).
+    # Optional bumper prize amount (NPR) for the IRD lottery card (the portal publishes none).
     prize_bumper_amount_npr: Decimal | None = None
 
     # MLflow tracing (metadata only, never prompt text). Off unless mlflow_enabled.
