@@ -55,6 +55,17 @@ async def test_bill_isolation_and_delete(client, auth, other_auth, db):
     assert (await client.get(f"/bills/{bid}", headers=auth)).status_code == 404
 
 
+async def test_bill_with_expense_cannot_be_deleted(client, auth, db):
+    bid = await make_bill(client, auth, db)
+    assert (await client.post(f"/bills/{bid}/confirm", headers=auth, json=CONFIRM)).status_code == 200
+    assert (await client.delete(f"/bills/{bid}", headers=auth)).status_code == 409
+    assert (await client.get(f"/bills/{bid}", headers=auth)).status_code == 200
+    # Deleting the expense keeps the scanned bill; once orphaned it can be removed.
+    [e] = (await client.get("/expenses", headers=auth)).json()
+    assert (await client.delete(f"/expenses/{e['id']}", headers=auth)).status_code == 204
+    assert (await client.delete(f"/bills/{bid}", headers=auth)).status_code == 204
+
+
 async def test_flags_follow_current_values(client, auth, db):
     bid = await make_bill(client, auth, db)
     flags = (await client.get(f"/bills/{bid}", headers=auth)).json()["flags"]
