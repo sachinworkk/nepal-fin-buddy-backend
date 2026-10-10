@@ -19,6 +19,7 @@ from strands import ToolContext, tool
 from app import assistant
 from app.assistant import AggregateArgs, ListArgs, SearchArgs
 from app.core.categories import Category
+from app.core.dates import draw_period
 from app.core.payment_methods import PaymentMethod
 from app.db import SessionLocal
 from app.models import Expense
@@ -28,6 +29,7 @@ from app.rag import retrieve
 from app.schemas.budgets import BudgetIn
 from app.schemas.expenses import ExpenseIn, ExpenseUpdate
 from app.services import budgets, expenses
+from app.services import prize as prize_service
 from app.services.prize import eligible_bills, pending_handoffs, prize_summary
 
 CONFIRM = "expense-confirm"
@@ -153,15 +155,17 @@ async def search_documents(tool_context: ToolContext, query: str,
 @tool(context=True)
 async def list_prize_eligible_bills(tool_context: ToolContext) -> dict | str:
     """List the user's bills that can be entered in the IRD bill lottery (Bill Magnu Bhagya
-    Pau): confirmed, cash, with PAN, bill number, date and total, and not already submitted.
-    Bills missing any of those details are not eligible; bills are submitted from the app's
-    Prize screen, not by you. Each bill's status is "ready_to_submit" (not started yet) or
-    "awaiting_portal_submission" (prepared for the IRD portal, waiting for the user to finish
-    submitting there and mark it submitted). The result also has the entry deadline and days left
-    to enter bills for this fiscal year ("entry_deadline", "days_left", omitted if the portal
-    is unreachable) and "coupons_this_year". The IRD draw is held fortnightly and each draw
-    has both a bumper prize and daily prizes. The portal publishes the entry deadline, not
-    the date of any draw; don't state a draw date."""
+    Pau): confirmed, cash, with PAN, bill number, date and total, dated in a draw period that
+    is still open, and not already submitted. IRD draws per BS half-month: bills dated the
+    1st-15th must be entered by the 15th (draw on the 16th); bills dated the 16th-month end by
+    the month end (draw on the 1st of the next month). A bill from an earlier period can't be
+    entered in a later draw. Each draw has a bumper prize (all bills of the period) and daily
+    prizes (by purchase date). Bills are submitted from the app's Prize screen, not by you.
+    Each bill's status is "ready_to_submit" (not started yet) or "awaiting_portal_submission"
+    (prepared for the IRD portal, waiting for the user to finish submitting there and mark it
+    submitted); ready bills carry their own "entry_deadline" and "draw_date". The result also
+    has the current period ("period_start", "entry_deadline", "draw_date", "days_left") and
+    "coupons_this_year" (omitted if the portal is unreachable)."""
     with trace_span("tool.list_prize_eligible_bills", span_type="TOOL"):
         async with SessionLocal() as s:
             bills = await eligible_bills(s, _user(tool_context))
@@ -171,16 +175,23 @@ async def list_prize_eligible_bills(tool_context: ToolContext) -> dict | str:
                     summary = await prize_summary(s, _user(tool_context), http)
             except PrizeError:
                 summary = None
-    deadline = {} if summary is None or summary.days_left is None else {
-        "entry_deadline": summary.entry_deadline.isoformat(), "days_left": summary.days_left,
-        "fiscal_year": summary.fiscal_year_name, "coupons_this_year": summary.coupons_this_year}
+    today = prize_service.nepal_today()
+    period = draw_period(today)
+    deadline = {
+        "period_start": period.start.isoformat(), "entry_deadline": period.end.isoformat(),
+        "draw_date": period.draw_date.isoformat(), "days_left": (period.end - today).days}
+    if summary is not None and summary.fiscal_year_name:
+        deadline |= {"fiscal_year": summary.fiscal_year_name,
+                     "coupons_this_year": summary.coupons_this_year}
     return json.dumps({"currency": "NPR", **deadline, "eligible_bills": [
         {"vendor": vendor, "pan": e.seller_pan_no, "bill_number": e.bill_number,
          "date": e.bill_date.isoformat(), "total": str(e.billed_total_amount),
          "status": "awaiting_portal_submission"} for e, vendor in pending] + [
         {"bill_id": str(b.id), "vendor": b.vendor_name, "pan": b.vendor_pan,
          "bill_number": b.bill_number, "date": b.bill_date_ad.isoformat(),
-         "total": str(b.total_amount), "status": "ready_to_submit"} for b in bills]})
+         "total": str(b.total_amount), "status": "ready_to_submit",
+         "entry_deadline": draw_period(b.bill_date_ad).end.isoformat(),
+         "draw_date": draw_period(b.bill_date_ad).draw_date.isoformat()} for b in bills]})
 
 
 @tool(context=True)

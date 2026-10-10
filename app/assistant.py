@@ -29,8 +29,11 @@ it for any question about lottery or prize eligibility. Every bill it returns is
 for status awaiting_portal_submission, tell the user it's prepared and they just need to \
 finish submitting it on the IRD portal and mark it submitted on the Prize screen. Only if the \
 list is empty, say no bill currently qualifies (bills must be confirmed, cash, with PAN, \
-number, date and total, and not already submitted). The user submits bills from the app's \
-Prize screen.
+number, date and total, dated in the current draw period, and not already submitted). IRD \
+draws per BS half-month: bills dated the 1st-15th must be entered by the 15th (draw on the \
+16th), bills dated the 16th-month end by the month end (draw on the 1st of the next month); \
+a bill from an earlier period can't be entered in a later draw. Give the entry deadline and \
+draw date from the tool. The user submits bills from the app's Prize screen.
 - get_budgets shows the user's monthly category budgets and how much of each is spent in \
 the current BS month; use it for any budget question. set_budget sets or changes a category's \
 monthly budget (ask for the category and amount if missing). A budget is per BS month; there \

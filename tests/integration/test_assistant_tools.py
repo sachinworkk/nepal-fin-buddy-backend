@@ -12,8 +12,9 @@ from app import assistant, llm
 from app.agent import model as agent_model
 from app.assistant import AggregateArgs, ListArgs
 from app.models import AgentStorage, ChatMessage, Expense
+from app.services import prize as prize_service
 from tests.integration.fake_agent import FakeAgentModel
-from tests.integration.test_prize import _confirmed_bill, _user_id, handoff_body
+from tests.integration.test_prize import TODAY, _confirmed_bill, _user_id, handoff_body
 from tests.integration.test_rag_chat import FakeLLM
 
 D = dt.date(2026, 9, 10)
@@ -79,6 +80,11 @@ async def test_tools_are_user_scoped(client, auth, other_auth, db):
 async def test_read_only_enforced(client, auth, db):
     with pytest.raises(Exception, match="read-only"):
         await assistant._read_only_rows(db, text("DELETE FROM expenses"))
+
+
+@pytest.fixture(autouse=True)
+def _pin_prize_today(monkeypatch):
+    monkeypatch.setattr(prize_service, "nepal_today", lambda: TODAY)
 
 
 @pytest.fixture

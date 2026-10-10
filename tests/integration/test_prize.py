@@ -23,6 +23,17 @@ def _no_throttle(monkeypatch):
     monkeypatch.setattr(get_settings(), "prize_user_submit_interval_seconds", 0)
 
 
+# BS 2083-06-25: the open draw period is 2083-06-16..06-31 (AD 2026-10-02..10-17), draw on
+# 2083-07-01 (AD 2026-10-18). Pinned so the period rule doesn't depend on the real date.
+TODAY = dt.date(2026, 10, 11)
+PREV_PERIOD_DAY = dt.date(2026, 10, 1)  # BS 2083-06-15, entry closed on that day
+
+
+@pytest.fixture(autouse=True)
+def _pin_today(monkeypatch):
+    monkeypatch.setattr(prize_service, "nepal_today", lambda: TODAY)
+
+
 @pytest.fixture(autouse=True)
 def _fresh_portal_caches():
     prize_service.reset_portal_caches()
@@ -68,7 +79,7 @@ async def _user_id(auth) -> uuid.UUID:
 async def _confirmed_bill(db, user, **kw) -> Bill:
     fields = {
         "vendor_pan": "123456789", "bill_number": "BILL-9",
-        "bill_date_ad": dt.date(2026, 10, 1), "total_amount": Decimal("2500"),
+        "bill_date_ad": dt.date(2026, 10, 5), "total_amount": Decimal("2500"),
         "status": "confirmed",
     }
     fields.update(kw)
@@ -295,7 +306,38 @@ async def test_eligible_lists_only_valid_unenrolled_bills(client, portal, auth, 
     assert [x["bill_id"] for x in rows] == [str(good.id)]
     assert rows[0]["fiscal_year_code"] == "2083-84"
     assert rows[0]["fiscal_year_status"] == "ACTIVE"
-    assert rows[0]["days_left"] >= 0
+    assert rows[0]["entry_deadline"] == "2026-10-17" and rows[0]["draw_date"] == "2026-10-18"
+    assert rows[0]["days_left"] == 6
+
+
+@pytest.mark.parametrize("bill_date, open_", [
+    (PREV_PERIOD_DAY, False),           # BS 06-15: previous period, closed
+    (dt.date(2026, 10, 2), True),       # BS 06-16: first day of the open period
+    (dt.date(2026, 10, 9), True),       # mid-period
+])
+async def test_eligible_respects_draw_period(client, portal, auth, db, bill_date, open_):
+    bill = await _confirmed_bill(db, await _user_id(auth), bill_date_ad=bill_date)
+    rows = (await client.get("/prize/eligible", headers=auth)).json()
+    assert [r["bill_id"] for r in rows] == ([str(bill.id)] if open_ else [])
+
+
+async def test_last_day_of_period_still_accepted(client, portal, auth, db, monkeypatch):
+    monkeypatch.setattr(prize_service, "nepal_today", lambda: dt.date(2026, 10, 17))
+    bill = await _confirmed_bill(db, await _user_id(auth), bill_date_ad=dt.date(2026, 10, 2))
+    r = await client.get("/prize/eligible", headers=auth)
+    assert r.json()[0]["days_left"] == 0
+    r = await client.post("/prize/enrollments/handoff", headers=auth,
+                          json=handoff_body(str(bill.id)))
+    assert r.status_code == 200, r.text
+
+
+async def test_closed_period_bill_rejected(client, portal, auth, db):
+    bill = await _confirmed_bill(db, await _user_id(auth), bill_date_ad=PREV_PERIOD_DAY)
+    for path, payload in (("/prize/enrollments/handoff", handoff_body(str(bill.id))),
+                          ("/prize/enrollments", body(str(bill.id)))):
+        r = await client.post(path, headers=auth, json=payload)
+        assert r.status_code == 422, r.text
+        assert "2083.06.15" in r.json()["detail"]["bill_date"]
 
 
 async def test_eligible_isolated_per_user(client, portal, auth, other_auth, db):
@@ -438,12 +480,11 @@ async def test_winners_rejects_bad_params(client, portal, auth):
 
 
 async def test_summary_counts_and_deadline(client, portal, auth, other_auth, db, monkeypatch):
-    monkeypatch.setattr(prize_service, "nepal_today", lambda: dt.date(2026, 10, 11))
     monkeypatch.setattr(get_settings(), "prize_bumper_amount_npr", Decimal("10000000"))
     user = await _user_id(auth)
     sent = await _confirmed_bill(db, user, bill_number="SENT-1")
     await _confirmed_bill(db, user, bill_number="OPEN-1")
-    await _confirmed_bill(db, user, bill_number="OLD-1", bill_date_ad=dt.date(2025, 1, 1))
+    await _confirmed_bill(db, user, bill_number="OLD-1", bill_date_ad=PREV_PERIOD_DAY)
     await _confirmed_bill(db, await _user_id(other_auth), bill_number="OTHER-1")
     assert (await client.post("/prize/enrollments", headers=auth,
                               json=body(str(sent.id)))).status_code == 201
@@ -452,10 +493,11 @@ async def test_summary_counts_and_deadline(client, portal, auth, other_auth, db,
     assert r.status_code == 200, r.text
     out = r.json()
     assert out["fiscal_year_code"] == "2083-84"
-    assert out["entry_deadline"] == "2027-07-16" and out["days_left"] == 278
+    assert out["period_start"] == "2026-10-02" and out["entry_deadline"] == "2026-10-17"
+    assert out["draw_date"] == "2026-10-18" and out["days_left"] == 6
     assert out["coupons_this_year"] == 1
     assert out["coupons_all_time"] == 1
-    assert out["eligible_this_year"] == 1  # OPEN-1; OLD-1 is from the closed fiscal year
+    assert out["eligible_this_year"] == 1  # OPEN-1; OLD-1's draw period has closed
     assert out["pending_handoffs"] == 0
     assert out["latest_bumper"]["draw_id"] == "draw_mock_bumper"
     assert out["latest_bumper"]["winner_count"] == 1
@@ -496,7 +538,7 @@ async def test_summary_portal_down(client, auth, db):
         await http.aclose()
     assert r.status_code == 200, r.text
     out = r.json()
-    assert out["days_left"] is None and out["entry_deadline"] is None
+    assert out["fiscal_year_code"] is None and out["entry_deadline"] == "2026-10-17"
     assert out["latest_bumper"] is None and out["latest_daily"] is None
     assert out["pending_handoffs"] == 0
 
