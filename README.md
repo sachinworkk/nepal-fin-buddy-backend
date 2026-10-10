@@ -82,8 +82,9 @@ two modes, reported by `GET /prize/config` as `submission_mode`:
 
 - `direct` (`PRIZE_MODE=test`, the local mock): the flow below.
 - `handoff` (`PRIZE_MODE=live`): the app prefills, the user submits on the portal.
-  1. `GET /prize/eligible` — confirmed bills that pass the portal's checks and
-     aren't enrolled yet, with the fiscal year and `days_left` (null if the portal
+  1. `GET /prize/eligible` — confirmed bills that pass the portal's checks, are in a
+     draw period still open for entry and aren't enrolled yet, with each bill's
+     `entry_deadline`, `draw_date`, `days_left` and fiscal year (null if the portal
      is unreachable).
   2. `POST /prize/enrollments/handoff` (`bill_id`, name, address, mobile) — returns
      the prefilled `fields` and `portal_url`; records a `handed_off` row
@@ -111,6 +112,16 @@ Backend behaviour:
 - `form_started_at` must be 5s–24h old (the portal rejects faster/older forms).
 - Submissions by the same user are spaced out (`PRIZE_USER_SUBMIT_INTERVAL_SECONDS`)
   because the portal throttles bursts with a misleading `form expired` error.
+- Draw periods follow the IRD procedure, on the BS calendar:
+
+  | Purchase date (BS) | Enter by | Draw |
+  |---|---|---|
+  | 1st–15th | the 15th | the 16th |
+  | 16th–month end | the month end | the 1st of the next month |
+
+  A bill can only be entered in its own period, never a later one; a closed-period
+  bill gets `422` on `bill_date` (`app/core/dates.py:draw_period`). Each draw has a
+  bumper prize (all bills of the period) and daily prizes (by purchase date).
 - Duplicate bills (same user + PAN + bill number + date, already accepted) get `409`.
 - Portal rejections pass through as `400` with the portal's message; transport/5xx
   errors become `502`. Failed attempts are still recorded with `last_error`.
@@ -119,11 +130,11 @@ Backend behaviour:
 
 `GET /prize/fiscal-years` proxies the portal's fiscal-year list (1h cache).
 
-`GET /prize/summary` feeds the IRD lottery card: days left until the active fiscal year ends
-(the last day to enter bills; the portal publishes no draw date), the user's coupons and
-eligible bills for that year, pending hand-offs, and the latest fortnightly draw's Bumper
-Prize and Daily Prize results (`latest_bumper`, `latest_daily`). Days are
-counted in Nepal time. If the portal is down the counts are still returned.
+`GET /prize/summary` feeds the IRD lottery card: the current draw period (`period_start`,
+`entry_deadline`, `draw_date`, `days_left`, computed locally), the user's coupons for the
+active fiscal year, bills still enterable (`eligible_this_year`), pending hand-offs, and the
+latest draw's Bumper Prize and Daily Prize results (`latest_bumper`, `latest_daily`). Days
+are counted in Nepal time. If the portal is down the period and counts are still returned.
 
 ## Chat assistant
 

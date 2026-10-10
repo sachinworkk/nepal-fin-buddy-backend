@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, get_owned
 from app.config import get_settings
+from app.core.dates import ad_to_bs, draw_period, format_bs
 from app.models import Bill, PrizeEnrollment
 from app.prize.client import (
     PrizeError,
@@ -90,7 +91,7 @@ async def prize_winners(
 
 @router.get("/summary", response_model=PrizeSummaryOut)
 async def prize_summary(user: CurrentUser, session: SessionDep, http: PrizeClient):
-    """IRD lottery card: days left to enter bills this fiscal year, your coupons, latest fortnightly draw (bumper + daily)."""
+    """IRD lottery card: current draw period and deadline, your coupons, latest draw."""
     return await prize_service.prize_summary(session, user.id, http)
 
 
@@ -180,6 +181,11 @@ async def _resolve_fields(
         payment_method=vals["payment_method"], name=body.name, address=body.address,
         mobile_number=body.mobile_number,
     )
+    if "bill_date" not in errors and not prize_service.period_open(vals["bill_date"]):
+        end = ad_to_bs(draw_period(vals["bill_date"]).end)
+        errors["bill_date"] = (
+            f"Entry for this bill's draw period closed on {format_bs(end.year, end.month, end.day)}"
+            " (BS); it can't be entered in a later draw")
     if errors:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, errors)
 
@@ -296,15 +302,15 @@ async def list_eligible(user: CurrentUser, session: SessionDep, http: PrizeClien
     for b in bills:
         fy = next((y for y in years
                    if y["start_date"] <= b.bill_date_ad.isoformat() <= y["end_date"]), None)
-        active = fy is not None and fy.get("status") == "ACTIVE"
+        period = draw_period(b.bill_date_ad)
         out.append(PrizeEligibleOut(
             bill_id=b.id, vendor_name=b.vendor_name, seller_pan_no=b.vendor_pan,
             bill_number=b.bill_number, bill_date=b.bill_date_ad,
             billed_total_amount=b.total_amount,
             fiscal_year_code=fy["fiscal_year_code"] if fy else None,
             fiscal_year_status=fy.get("status") if fy else None,
-            days_left=max(0, (dt.date.fromisoformat(fy["end_date"]) - today).days)
-            if active else None,
+            entry_deadline=period.end, draw_date=period.draw_date,
+            days_left=(period.end - today).days,
         ))
     return out
 

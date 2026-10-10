@@ -39,3 +39,16 @@ def test_parse_date_any_bs_and_ad():
 
 def test_devanagari_digits():
     assert dates.to_ascii_digits("रू. १,२३४.५०") == "रू. 1,234.50"
+
+
+@pytest.mark.parametrize("bs, start, end, draw", [
+    ((2083, 6, 1), (2083, 6, 1), (2083, 6, 15), (2083, 6, 16)),
+    ((2083, 6, 15), (2083, 6, 1), (2083, 6, 15), (2083, 6, 16)),
+    ((2083, 6, 16), (2083, 6, 16), (2083, 6, 31), (2083, 7, 1)),
+    ((2083, 6, 31), (2083, 6, 16), (2083, 6, 31), (2083, 7, 1)),
+    ((2083, 3, 32), (2083, 3, 16), (2083, 3, 32), (2083, 4, 1)),      # 32-day month
+    ((2082, 12, 20), (2082, 12, 16), (2082, 12, 30), (2083, 1, 1)),   # Chaitra -> Baisakh
+])
+def test_draw_period(bs, start, end, draw):
+    p = dates.draw_period(dates.bs_to_ad(*bs))
+    assert p == (dates.bs_to_ad(*start), dates.bs_to_ad(*end), dates.bs_to_ad(*draw))

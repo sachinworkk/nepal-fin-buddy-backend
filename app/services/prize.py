@@ -10,6 +10,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.core.dates import draw_period
 from app.models import Bill, PrizeEnrollment
 from app.prize.client import PrizeError, fiscal_years, winners
 from app.prize.validation import validate_fields
@@ -52,6 +53,12 @@ async def cached_winners(http: httpx.AsyncClient, limit: int, offset: int, **fil
     return page
 
 
+def period_open(bill_date: dt.date, today: dt.date | None = None) -> bool:
+    """Whether a bill can still be entered: IRD only takes it until the end of its own draw
+    period, it can't roll into a later draw."""
+    return draw_period(bill_date).end >= (today or nepal_today())
+
+
 def reset_portal_caches() -> None:
     global _fiscal_cache, _fiscal_cached_at
     _fiscal_cache, _fiscal_cached_at = None, 0.0
@@ -59,8 +66,9 @@ def reset_portal_caches() -> None:
 
 
 async def eligible_bills(session: AsyncSession, user_id: uuid.UUID) -> list[Bill]:
-    """Confirmed bills that pass the portal's bill checks and aren't already enrolled,
-    newest first."""
+    """Confirmed bills that pass the portal's bill checks, are in a draw period still open
+    for entry and aren't already enrolled, newest first."""
+    today = nepal_today()
     taken = {
         (r.seller_pan_no, r.bill_number, r.bill_date)
         for r in await session.scalars(select(PrizeEnrollment).where(
@@ -77,6 +85,7 @@ async def eligible_bills(session: AsyncSession, user_id: uuid.UUID) -> list[Bill
     return [
         b for b in bills
         if (b.vendor_pan, b.bill_number, b.bill_date_ad) not in taken
+        and period_open(b.bill_date_ad, today)
         and not validate_fields(
             bill_number=b.bill_number, seller_pan_no=b.vendor_pan, bill_date=b.bill_date_ad,
             billed_total_amount=float(b.total_amount), payment_method="Cash",
@@ -124,10 +133,17 @@ async def _latest_category_draw(
 async def prize_summary(
     session: AsyncSession, user_id: uuid.UUID, http: httpx.AsyncClient
 ) -> PrizeSummaryOut:
-    """Entry deadline for the active fiscal year plus the user's standing. The deadline and
-    the latest fortnightly draw (bumper and daily prizes) come from the portal and are left
-    empty if it's unreachable."""
-    out = PrizeSummaryOut(bumper_prize_amount_npr=get_settings().prize_bumper_amount_npr)
+    """The current draw period's entry deadline and draw date plus the user's standing. The
+    fiscal year and the latest draw (bumper and daily prizes) come from the portal and are
+    left empty if it's unreachable."""
+    today = nepal_today()
+    period = draw_period(today)
+    out = PrizeSummaryOut(
+        bumper_prize_amount_npr=get_settings().prize_bumper_amount_npr,
+        period_start=period.start, entry_deadline=period.end, draw_date=period.draw_date,
+        days_left=(period.end - today).days,
+        eligible_this_year=len(await eligible_bills(session, user_id)),
+    )
     try:
         years = (await cached_fiscal_years(http)).get("fiscal_years") or []
     except PrizeError:
@@ -137,13 +153,9 @@ async def prize_summary(
         start, end = dt.date.fromisoformat(fy["start_date"]), dt.date.fromisoformat(fy["end_date"])
         out.fiscal_year_code = fy["fiscal_year_code"]
         out.fiscal_year_name = fy.get("display_name") or fy["fiscal_year_code"]
-        out.entry_deadline = end
-        out.days_left = max(0, (end - nepal_today()).days)
         out.coupons_this_year = len(list(await session.scalars(select(PrizeEnrollment.id).where(
             PrizeEnrollment.user_id == user_id, PrizeEnrollment.status == "submitted",
             PrizeEnrollment.bill_date.between(start, end)))))
-        out.eligible_this_year = sum(
-            1 for b in await eligible_bills(session, user_id) if start <= b.bill_date_ad <= end)
     out.coupons_all_time = len(list(await session.scalars(select(PrizeEnrollment.id).where(
         PrizeEnrollment.user_id == user_id, PrizeEnrollment.status == "submitted"))))
     out.pending_handoffs = len(await pending_handoffs(session, user_id))

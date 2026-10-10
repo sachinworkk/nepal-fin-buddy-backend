@@ -2,6 +2,7 @@
 
 import datetime as dt
 import re
+from typing import NamedTuple
 
 import nepali_datetime
 
@@ -60,6 +61,26 @@ def month_bounds(y: int, m: int) -> tuple[dt.date, dt.date]:
     start = bs_to_ad(y, m, 1)
     ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
     return start, bs_to_ad(ny, nm, 1) - dt.timedelta(days=1)
+
+
+class DrawPeriod(NamedTuple):
+    """An IRD lottery draw period, as AD dates. Bills dated start..end must be entered by
+    `end` and go into the draw on `draw_date`."""
+
+    start: dt.date
+    end: dt.date
+    draw_date: dt.date
+
+
+def draw_period(d: dt.date) -> DrawPeriod:
+    """The IRD draw period of a purchase on AD date `d`: BS 1st-15th (draw on the 16th) or
+    16th-month end (draw on the 1st of the next month)."""
+    b = ad_to_bs(d)
+    first, last = month_bounds(b.year, b.month)
+    if b.day <= 15:
+        mid = bs_to_ad(b.year, b.month, 15)
+        return DrawPeriod(first, mid, mid + dt.timedelta(days=1))
+    return DrawPeriod(bs_to_ad(b.year, b.month, 16), last, last + dt.timedelta(days=1))
 
 
 def today_bs() -> tuple[int, int]:

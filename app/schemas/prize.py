@@ -61,7 +61,9 @@ class PrizeEligibleOut(BaseModel):
     # From the portal's fiscal-year list; null when the portal is unreachable or no year matches.
     fiscal_year_code: str | None
     fiscal_year_status: str | None
-    days_left: int | None = Field(description="Days until the fiscal year ends (ACTIVE years only)")
+    entry_deadline: dt.date = Field(description="Last day to enter the bill (end of its period)")
+    draw_date: dt.date = Field(description="Date of the IRD draw the bill goes into")
+    days_left: int = Field(description="Days until entry_deadline (0 = last day)")
 
 
 class PrizeHandoffIn(BaseModel):
@@ -122,20 +124,25 @@ class PrizeBumperDrawOut(BaseModel):
 
 
 class PrizeSummaryOut(BaseModel):
-    """IRD lottery card: entry deadline for the active fiscal year and the user's standing.
+    """IRD lottery card: the current draw period and the user's standing.
 
-    The IRD draw is fortnightly and each draw has a bumper prize and daily prizes. The portal
-    publishes when the fiscal year ends (the last day to enter bills), not the date of any
-    draw, so this is an entry deadline.
+    IRD draws per BS half-month: bills dated the 1st-15th must be entered by the 15th and go
+    into the draw on the 16th; bills dated the 16th-month end must be entered by the month
+    end and go into the draw on the 1st of the next month. A bill can't be entered in a later
+    period. Each draw has a bumper prize (whole period) and daily prizes (by purchase date).
     """
 
     fiscal_year_code: str | None = None
     fiscal_year_name: str | None = None
-    entry_deadline: dt.date | None = None
+    period_start: dt.date | None = None
+    entry_deadline: dt.date | None = Field(
+        default=None, description="Last day to enter bills of the current draw period")
+    draw_date: dt.date | None = None
     days_left: int | None = None
     coupons_this_year: int = 0
     coupons_all_time: int = 0
-    eligible_this_year: int = 0
+    eligible_this_year: int = Field(
+        default=0, description="Bills still enterable (in the current period), not yet entered")
     pending_handoffs: int = 0
     latest_bumper: PrizeBumperDrawOut | None = None
     latest_daily: PrizeBumperDrawOut | None = None
