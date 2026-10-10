@@ -334,4 +334,17 @@ def _all_cases():
                 "The documents name the landlord, Kumar Shrestha, but contain no phone number."
             ),
         },
+        # --- bill-change requests: the canned reply, never the scope refusal -----
+        {
+            "id": "bill_change_vendor",
+            "question": "Change the vendor on my Bhatbhateni bill to Big Mart.",
+            "must_retrieve": None,
+            "expected_answer_hint": (
+                "Bills can't be changed from chat. Before confirming, any field can be "
+                "corrected on the Snap screen; once confirmed the vendor, total and date "
+                "stay as scanned, so upload the bill again to change those. The expense the "
+                "bill created can be changed or deleted from chat, and its PAN, bill number "
+                "and VAT amounts are editable in the expense's Edit form."
+            ),
+        },
     ]

@@ -17,7 +17,7 @@ from sqlalchemy import select
 from strands import ToolContext, tool
 
 from app import assistant
-from app.assistant import AggregateArgs, ListArgs, SearchArgs
+from app.assistant import BILL_CHANGE_REPLY, AggregateArgs, ListArgs, SearchArgs
 from app.core.categories import Category
 from app.core.dates import draw_period
 from app.core.payment_methods import PaymentMethod
@@ -357,5 +357,18 @@ async def delete_expense(tool_context: ToolContext, expense_id: str) -> dict | s
             return json.dumps({"deleted": summary})
 
 
+@tool
+async def bill_change_request() -> str:
+    """Reply to any request to upload, change or delete a bill itself — e.g. change its
+    vendor, correct its date or total, replace the scanned image, or upload a new bill.
+    Bills are never changed from chat; this returns the standard reply explaining what the
+    user can do instead (correct fields on the Snap screen before confirming, upload the
+    bill again, or edit the expense). Relay the reply to the user in their language, then
+    offer to change or delete the expense the bill created."""
+    with trace_span("tool.bill_change_request", span_type="TOOL"):
+        return BILL_CHANGE_REPLY
+
+
 TOOLS = [aggregate_expenses, list_expenses, search_documents, list_prize_eligible_bills,
-         get_budgets, set_budget, delete_budget, create_expense, update_expense, delete_expense]
+         get_budgets, set_budget, delete_budget, create_expense, update_expense, delete_expense,
+         bill_change_request]
