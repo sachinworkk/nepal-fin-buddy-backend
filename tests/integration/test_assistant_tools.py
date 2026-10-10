@@ -364,6 +364,40 @@ async def test_get_budgets_tool_reports_spend(client, auth, agent):
     assert '"status": "warning"' in seen[0] and '"spent": "900.00"' in seen[0]
 
 
+async def test_delete_budget_waits_for_confirmation(client, auth, agent):
+    await client.put("/budgets/dining", headers=auth, json={"amount": "8000"})
+    dele = {"tools": [("delete_budget", {"category": "dining"})]}
+    agent([dele, ANSWER, dele, ANSWER])
+    sid, r = await _ask(client, auth, "remove my dining budget")
+    assert r.status_code == 200, r.text
+    [action] = r.json()["pending_actions"]
+    assert action["action"] == "budget-delete"
+    assert action["budget"] == {"category": "dining", "amount": "8000.00"}
+    assert action["expense"] is None
+
+    r = await _decide(client, auth, sid, [(action["interrupt_id"], "cancel")])
+    assert "cancelled" in r.json()["content"]
+    assert len((await client.get("/budgets", headers=auth)).json()) == 1
+
+    r = await _say(client, auth, sid, "actually yes, remove it")
+    [action] = r.json()["pending_actions"]
+    r = await _decide(client, auth, sid, [(action["interrupt_id"], "confirm")])
+    assert r.status_code == 200, r.text
+    assert "budget_deleted" in r.json()["content"]
+    assert (await client.get("/budgets", headers=auth)).json() == []
+    detail = (await client.get(f"/chat/sessions/{sid}", headers=auth)).json()
+    assert detail["messages"][-1]["pending_actions"] is None
+
+
+async def test_delete_budget_missing_or_other_users(client, auth, other_auth, agent):
+    await client.put("/budgets/dining", headers=other_auth, json={"amount": "500"})
+    agent([{"tools": [("delete_budget", {"category": "dining"})]}, ANSWER])
+    _, r = await _ask(client, auth, "remove my dining budget")
+    assert r.json()["pending_actions"] is None
+    assert "no budget" in r.json()["content"]
+    assert len((await client.get("/budgets", headers=other_auth)).json()) == 1
+
+
 def dates_today() -> dt.date:
     from tests.integration.test_stats import bs_first_day
     return bs_first_day(0)

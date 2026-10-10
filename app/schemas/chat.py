@@ -24,9 +24,10 @@ class PendingAction(BaseModel):
     """An edit or delete the assistant wants to make, waiting for the user's decision."""
 
     interrupt_id: str
-    action: Literal["update", "delete"]
-    expense: dict  # the expense as it is now
+    action: Literal["update", "delete", "budget-delete"]
+    expense: dict | None = None  # for "update"/"delete": the expense as it is now
     changes: dict | None = None  # for "update": only the fields that change
+    budget: dict | None = None  # for "budget-delete": {category, amount}
     decision: Literal["confirm", "cancel"] | None = None  # set once the user answered
 
 

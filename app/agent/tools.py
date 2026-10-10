@@ -22,7 +22,7 @@ from app.core.categories import Category
 from app.core.dates import draw_period
 from app.core.payment_methods import PaymentMethod
 from app.db import SessionLocal
-from app.models import Expense
+from app.models import Budget, Expense
 from app.observability import trace_span
 from app.prize.client import PrizeError, make_prize_client
 from app.rag import retrieve
@@ -231,6 +231,31 @@ async def set_budget(tool_context: ToolContext, category: Category, amount: Deci
 
 
 @tool(context=True)
+async def delete_budget(tool_context: ToolContext, category: Category) -> dict | str:
+    """Remove the monthly budget for one category. The user is asked to confirm before it is
+    deleted.
+
+    Args:
+        category: Expense category whose budget to remove.
+    """
+    if (blocked := _cancelled(tool_context)) is not None:
+        return blocked
+    async with SessionLocal() as s:
+        b = await s.scalar(select(Budget).where(Budget.user_id == _user(tool_context),
+                                                Budget.category == category.value))
+        if b is None:
+            return _error("The user has no budget for that category.")
+        summary = {"category": b.category, "amount": str(b.amount)}
+        decision = tool_context.interrupt(CONFIRM, reason={"action": "budget-delete",
+                                                           "budget": summary})
+        if decision != "confirm":
+            return "The user cancelled; nothing was deleted."
+        with trace_span("tool.delete_budget", span_type="TOOL"):
+            await budgets.delete_budget(s, _user(tool_context), category)
+            return json.dumps({"budget_deleted": summary})
+
+
+@tool(context=True)
 async def create_expense(
     tool_context: ToolContext,
     amount: Decimal, category: Category,
@@ -333,4 +358,4 @@ async def delete_expense(tool_context: ToolContext, expense_id: str) -> dict | s
 
 
 TOOLS = [aggregate_expenses, list_expenses, search_documents, list_prize_eligible_bills,
-         get_budgets, set_budget, create_expense, update_expense, delete_expense]
+         get_budgets, set_budget, delete_budget, create_expense, update_expense, delete_expense]
