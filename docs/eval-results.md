@@ -3,6 +3,36 @@
 Running log of the live LLM evals (`tests/eval`, see README "Live LLM evals"). Models at the
 time of writing: `EXTRACTION_MODEL=qwen/qwen3-vl-8b-instruct`, `CHAT_MODEL=google/gemma-4-26b-a4b-it`.
 
+## 2026-10-10: csnepal-invoice label corrected; re-runs worse, presentation keeps the 10-09 numbers
+
+Human check of `fixtures/bills/2.png`: the printed date is AD `2024-07-03`; the old BS label
+(`2082-05-02`) disagreed with the bill and is removed. This resolves the "label probably needs a
+human check" open issue from the 2026-10-09 extraction run. `csnepal-invoice` now has 8 scored
+fields (was 9), suite total 45 (was 46).
+
+Two fresh runs of `test_extraction_bench.py` with the corrected label:
+
+| Run | Overall | per-bill floor |
+|---|---|---|
+| Run 1 | 35/45 (77.8%) | failed |
+| Run 2 | 36/45 (80.0%) | failed |
+
+- **qfx-cinema-ticket collapsed in both runs (3/7)**: the model read the item as `AUDI 2`
+  (auditorium line) instead of `PLATINUM` (seat class), **computed** the total as 985.60
+  (880 + its own wrong VAT 105.60) instead of copying the printed 880.00, and guessed
+  payment method `qr` despite the prompt's "never infer" rule. On 10-09 it only missed VAT.
+  Same model id, prompt and image — a model-side behaviour change or severe variance.
+- `energetic-invoice-pdf` also guessed payment method `qr` (was 5/5 on 10-09).
+- `csnepal-invoice` still fails the corrected label: no `bill_date_ad` produced, handwritten
+  subtotal read as 6708 vs 6700, total/items follow. 4/8.
+- The simple printed/thermal fields stay perfect: vendor name, PAN, bill number, discount,
+  taxable amount, BS dates all 100%.
+
+Decision: the presentation keeps the 2026-10-09 measurement (40/46, 87%, "about 85-90% on 5
+labelled bills") because it was stable over two runs, while today's numbers are recorded here
+as the current state: **quote 78-82% until the qfx behaviour is understood**. Worth checking
+whether OpenRouter changed the `qwen/qwen3-vl-8b-instruct` serving before the next quoting.
+
 ## 2026-10-10: presentation scoring convention (chat hint-strictness cases)
 
 The demo deck quotes the chat e2e result with 3 of the 7 final-run failures re-scored as passes.

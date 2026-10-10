@@ -27,8 +27,8 @@
       "expected": {
         "vendor_name": "C.S. Nepal Pvt. Ltd.",
         "vendor_pan": "601176029",
+        "bill_date_ad": "2024-07-03",
         "bill_number": "203",
-        "bill_date_ad": null,
         "subtotal": "6700.00",
         "total_amount": "6700.00",
         "payment_method": null,
@@ -37,8 +37,7 @@
             "description": "Hardisk 2TB",
             "amount": "6700.00"
           }
-        ],
-        "bill_date_bs": "2082-05-02"
+        ]
       }
     },
     {
