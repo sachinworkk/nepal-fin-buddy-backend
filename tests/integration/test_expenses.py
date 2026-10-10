@@ -1,6 +1,8 @@
 import datetime as dt
 from decimal import Decimal
 
+from sqlalchemy import delete as sa_delete
+
 from app.core.security import decode_access_token
 from app.models import Bill, Expense
 
@@ -156,7 +158,11 @@ async def test_bill_details_after_scanned_bill_deleted(client, auth, db):
     db.add(exp_row)
     await db.commit()
     eid, bid = str(exp_row.id), str(bill.id)
-    assert (await client.delete(f"/bills/{bid}", headers=auth)).status_code == 204
+    # The API refuses to delete a bill that still has its expense...
+    assert (await client.delete(f"/bills/{bid}", headers=auth)).status_code == 409
+    # ...but rows from before that rule can have lost their scanned bill.
+    await db.execute(sa_delete(Bill).where(Bill.id == bill.id))
+    await db.commit()
     r = await client.get(f"/expenses/{eid}", headers=auth)
     assert r.json()["source"] == "bill" and r.json()["bill_id"] is None
 

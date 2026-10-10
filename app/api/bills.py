@@ -215,6 +215,11 @@ async def _index_bill(session, bill: Bill) -> None:
 @router.delete("/{bill_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_bill(bill_id: uuid.UUID, user: CurrentUser, session: SessionDep):
     bill = await get_owned(session, Bill, bill_id, user)
+    # A bill that recorded an expense is locked like a confirmed bill's fields; delete the
+    # expense first. Orphaned bills (their expense already deleted) can still be removed.
+    if await session.scalar(select(Expense.id).where(Expense.bill_id == bill.id)):
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Bill has a recorded expense; delete the expense first")
     path = bill.image_path
     await session.delete(bill)
     await session.commit()
