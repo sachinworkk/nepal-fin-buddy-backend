@@ -3,6 +3,30 @@
 Running log of the live LLM evals (`tests/eval`, see README "Live LLM evals"). Models at the
 time of writing: `EXTRACTION_MODEL=qwen/qwen3-vl-8b-instruct`, `CHAT_MODEL=google/gemma-4-26b-a4b-it`.
 
+## 2026-10-10: presentation scoring convention (chat hint-strictness cases)
+
+The demo deck quotes the chat e2e result with 3 of the 7 final-run failures re-scored as passes.
+Those 3 (`rent_amount`, `grocery_vat`, `mobile_vat`) each answered the question that was asked
+correctly (the headline amount) but omitted a second fact that only the golden hint demanded
+(a total or a period the question never asked for). The judge's GEval criterion counted it as
+required, so the harness scored them as fails.
+
+Scores under this convention:
+
+| Suite | As measured (strict) | Presentation (strictness counted as pass) |
+|---|---|---|
+| Chat end-to-end | 25/32 (78%) | 28/32 (88%) |
+| Full run | 79/95 (83%) | 82/95 (86%) |
+
+The 4 remaining chat failures are real in both conventions: `devanagari_net_salary` (gross
+Rs. 1,20,000 quoted instead of net Rs. 98,300), `romanized_rent` (retrieval miss, see below),
+`daraz_discount` (garbled/meaningless characters in the answer), `school_fee_total` (total
+right, school name and breakdown omitted — the least clear-cut of the four).
+
+The strict numbers remain the canonical measurement; the presentation numbers exist so the
+deck's headline matches what a human would score by hand. This entry is the disclosure of
+that re-scoring; the runs below were not re-measured.
+
 ## 2026-10-10: bill date extraction (Big Mart receipt)
 
 `IMG_9642.jpg` (prints only `Bill Date : 03/Oct/2026`) read as BS `2082.05.02` / 18 Aug 2025 on
