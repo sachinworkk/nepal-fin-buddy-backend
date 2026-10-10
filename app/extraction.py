@@ -34,8 +34,8 @@ no code fences — with these keys:
   "vendor_pan": string|null,          // digits only, the seller's PAN or VAT \
 number; never a DDA, licence or registration number
   "bill_number": string|null,
-  "bill_date_bs": string|null,        // exactly as printed, e.g. "2082.05.02" \
-(Y-M-D in Bikram Sambat). Null if not a BS date.
+  "bill_date_bs": string|null,        // exactly as printed (Y-M-D in Bikram \
+Sambat). Null unless a BS date is actually printed on the bill.
   "bill_date_ad": string|null,        // ISO "YYYY-MM-DD" if printed; else null
   "subtotal": string|null,            // decimal strings like "6895.00", no \
 currency symbols
@@ -67,8 +67,10 @@ decimals.
 "Miti"/"Mitti"/"मिति"; put it in bill_date_bs. A Gregorian (AD) date has a year of \
 about 2000-2030; put it in bill_date_ad as ISO YYYY-MM-DD (a second date \
 printed beside a BS date, e.g. "(09/22/26)", is the AD date in month/day/year order: \
-write it as "2026-09-22"). If both are printed, fill both. Never convert \
-between the calendars yourself: a date that is not printed stays null.
+write it as "2026-09-22"; a date with a month name such as "03/Oct/2026" is AD, \
+write it as "2026-10-03"). If both are printed, fill both. Never convert \
+between the calendars yourself: a date that is not printed stays null, so a bill \
+with only an AD date has bill_date_bs null.
 - If a field is not printed, use null. Do not guess, except category (always infer one); \
 payment_method only counts printed words or logos/QR."""
 
@@ -174,6 +176,35 @@ def _fix_dates(out: dict) -> None:
     out["bill_date_bs"], out["bill_date_ad"] = bs, ad
 
 
+_MON = ("jan feb mar apr may jun jul aug sep oct nov dec").split()
+_DMON_RE = re.compile(r"\b(\d{1,2})\s*[/.\-\s]\s*([A-Za-z]{3})[A-Za-z]*\s*[/.\-\s]\s*(\d{4})\b")
+
+
+def _check_dates_against_text(out: dict, ocr_text: str | None) -> None:
+    """Cross-check the dates against the model's own transcription of the bill.
+
+    A BS date whose year never appears in the transcription was made up (e.g. copied from a
+    prompt example), so drop it. A missing AD date is recovered from a "03/Oct/2026" style date.
+    """
+    if not ocr_text:
+        return
+    text = to_ascii_digits(ocr_text)
+    bs = out.get("bill_date_bs")
+    if bs:
+        year = re.match(r"\s*(\d{4})", to_ascii_digits(bs))
+        if year and year[1] not in text:
+            out["bill_date_bs"] = None
+    if not out.get("bill_date_ad"):
+        for day, mon, year in _DMON_RE.findall(text):
+            if mon.lower() in _MON:
+                try:
+                    out["bill_date_ad"] = dt.date(int(year), _MON.index(mon.lower()) + 1,
+                                                  int(day)).isoformat()
+                except ValueError:
+                    continue
+                break
+
+
 def looks_like_bs_string(text: str) -> bool:
     m = re.match(r"\s*(\d{4})\D", to_ascii_digits(text))
     return bool(m) and looks_like_bs(int(m[1]))
@@ -198,6 +229,7 @@ def parse_extraction(text: str) -> dict:
     out["items"] = _clean_items(raw.get("items"))
     out["ocr_text"] = _clean(raw.get("ocr_text"))
     _fix_dates(out)
+    _check_dates_against_text(out, out["ocr_text"])
     return out
 
 

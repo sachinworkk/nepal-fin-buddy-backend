@@ -3,6 +3,23 @@
 Running log of the live LLM evals (`tests/eval`, see README "Live LLM evals"). Models at the
 time of writing: `EXTRACTION_MODEL=qwen/qwen3-vl-8b-instruct`, `CHAT_MODEL=google/gemma-4-26b-a4b-it`.
 
+## 2026-10-10: bill date extraction (Big Mart receipt)
+
+`IMG_9642.jpg` (prints only `Bill Date : 03/Oct/2026`) read as BS `2082.05.02` / 18 Aug 2025 on
+some runs. That value was the example date in the prompt, copied when no BS date is printed.
+
+Changes (`app/extraction.py`):
+- The prompt no longer contains a literal example date, and says a month-name date such as
+  `03/Oct/2026` is AD and that an AD-only bill has `bill_date_bs` null.
+- `_check_dates_against_text`: a BS date whose year is not in the model's own transcription is
+  dropped, and a missing AD date is recovered from a `dd/Mon/yyyy` date in the transcription.
+  Tests in `tests/unit/test_extraction_dates.py`.
+
+Result: Big Mart 5/5 runs return AD `2026-10-03`, BS null. Benchmark (same-day runs): main had
+`bill_date_bs` 1/3 and `bill_date_ad` 4/5; with the change 2/3 and 4/5, every other field equal.
+Tried `temperature: 0` too: it made `qfx-cinema-ticket` worse (items, payment method, total,
+VAT), so it was left out.
+
 ## 2026-10-09: bill extraction benchmark
 
 `tests/eval/test_extraction_bench.py`, 5 labelled bills, deterministic field-by-field scorer.
