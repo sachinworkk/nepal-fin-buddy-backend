@@ -10,7 +10,7 @@ from sqlalchemy import select, text
 
 from app import assistant, llm
 from app.agent import model as agent_model
-from app.assistant import AggregateArgs, ListArgs
+from app.assistant import BILL_CHANGE_REPLY, AggregateArgs, ListArgs
 from app.models import AgentStorage, ChatMessage, Expense
 from app.services import prize as prize_service
 from tests.integration.fake_agent import FakeAgentModel
@@ -173,6 +173,31 @@ async def test_agent_lists_handed_off_bills_as_awaiting(client, auth, agent, db)
     [b] = out["eligible_bills"]
     assert b["bill_number"] == "BILL-HANDOFF" and b["vendor"] == "Bhatbhateni"
     assert b["status"] == "awaiting_portal_submission"
+
+
+async def test_bill_change_request_replies_without_refusing(client, auth, agent):
+    agent([{"tools": [("bill_change_request", {})]}, ANSWER])
+    _, r = await _ask(client, auth, "change the vendor on my bill to big mart")
+    assert r.status_code == 200, r.text
+    assert r.json()["content"] == f"Result: {BILL_CHANGE_REPLY}"
+    assert "I'm sorry" not in r.json()["content"]
+
+
+async def test_bill_change_after_lottery_question_gets_canned_reply(client, auth, agent, db):
+    await _confirmed_bill(db, await _user_id(auth), bill_number="BILL-OK")
+    agent([{"tools": [("list_prize_eligible_bills", {})]}, ANSWER,
+           {"tools": [("bill_change_request", {})]}, ANSWER])
+    sid, r = await _ask(client, auth, "which bills are eligible for the IRD lottery?")
+    assert r.status_code == 200, r.text
+    assert "BILL-OK" in r.json()["content"]
+
+    r = await _say(client, auth, sid, "change the vendor to big mart")
+    assert r.status_code == 200, r.text
+    assert r.json()["content"] == f"Result: {BILL_CHANGE_REPLY}"
+    assert "I'm sorry" not in r.json()["content"]
+    tools = list(await db.scalars(select(ChatMessage.tool_name).where(
+        ChatMessage.role == "tool")))
+    assert tools == ["list_prize_eligible_bills", "bill_change_request"]
 
 
 async def test_invalid_tool_args_reach_model_as_text(client, auth, agent):

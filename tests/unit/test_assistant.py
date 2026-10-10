@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.agent.tools import TOOLS
-from app.assistant import AggregateArgs, ListArgs, SearchArgs, system_prompt
+from app.assistant import BILL_CHANGE_REPLY, AggregateArgs, ListArgs, SearchArgs, system_prompt
 
 
 def test_aggregate_defaults():
@@ -36,7 +36,7 @@ def test_tools_expose_no_user_id():
     assert {t.tool_name for t in TOOLS} == {
         "aggregate_expenses", "list_expenses", "search_documents", "list_prize_eligible_bills",
         "get_budgets", "set_budget", "delete_budget", "create_expense", "update_expense",
-        "delete_expense"}
+        "delete_expense", "bill_change_request"}
     for t in TOOLS:
         props = t.tool_spec["inputSchema"]["json"]["properties"]
         assert not {"user_id", "tool_context", "document_ids"} & set(props), t.tool_name
@@ -59,3 +59,15 @@ def test_system_message_has_bs_month_ranges():
 def test_system_prompt_restricts_scope():
     p = system_prompt(dt.date(2026, 10, 8))
     assert "I can only help with questions about your bills" in p
+
+
+def test_system_prompt_routes_bill_changes_to_tool():
+    p = system_prompt(dt.date(2026, 10, 8))
+    assert "bill_change_request" in p
+    assert "you have no tool for it" not in p
+
+
+def test_bill_change_reply_text():
+    assert "Bills can't be changed from chat" in BILL_CHANGE_REPLY
+    assert "Snap screen" in BILL_CHANGE_REPLY and "Edit form" in BILL_CHANGE_REPLY
+    assert "I'm sorry" not in BILL_CHANGE_REPLY
