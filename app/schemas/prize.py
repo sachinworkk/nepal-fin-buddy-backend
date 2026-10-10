@@ -108,7 +108,7 @@ class PrizeWinOut(BaseModel):
 
 
 class PrizeBumperDrawOut(BaseModel):
-    """The most recent published Bumper Prize draw."""
+    """The most recent published draw in one prize category (bumper or daily) of the fortnightly draw."""
 
     draw_id: str
     title_en: str
@@ -122,10 +122,11 @@ class PrizeBumperDrawOut(BaseModel):
 
 
 class PrizeSummaryOut(BaseModel):
-    """Bumper-draw card: entry deadline for the active fiscal year and the user's standing.
+    """IRD lottery card: entry deadline for the active fiscal year and the user's standing.
 
-    The portal publishes when the fiscal year ends (the last day to enter bills), not the date
-    of the bumper draw itself, so this is an entry deadline.
+    The IRD draw is fortnightly and each draw has a bumper prize and daily prizes. The portal
+    publishes when the fiscal year ends (the last day to enter bills), not the date of any
+    draw, so this is an entry deadline.
     """
 
     fiscal_year_code: str | None = None
@@ -133,8 +134,10 @@ class PrizeSummaryOut(BaseModel):
     entry_deadline: dt.date | None = None
     days_left: int | None = None
     coupons_this_year: int = 0
+    coupons_all_time: int = 0
     eligible_this_year: int = 0
     pending_handoffs: int = 0
     latest_bumper: PrizeBumperDrawOut | None = None
+    latest_daily: PrizeBumperDrawOut | None = None
     bumper_prize_amount_npr: Decimal | None = Field(
         default=None, description="Display-only; configured, the portal doesn't publish it")

@@ -119,9 +119,10 @@ Backend behaviour:
 
 `GET /prize/fiscal-years` proxies the portal's fiscal-year list (1h cache).
 
-`GET /prize/summary` feeds the Bumper Draw card: days left until the active fiscal year ends
+`GET /prize/summary` feeds the IRD lottery card: days left until the active fiscal year ends
 (the last day to enter bills; the portal publishes no draw date), the user's coupons and
-eligible bills for that year, pending hand-offs, and the latest Bumper Prize draw. Days are
+eligible bills for that year, pending hand-offs, and the latest fortnightly draw's Bumper
+Prize and Daily Prize results (`latest_bumper`, `latest_daily`). Days are
 counted in Nepal time. If the portal is down the counts are still returned.
 
 ## Chat assistant
@@ -209,7 +210,7 @@ Results, known failures and the extraction benchmark number are logged in
 | `PRIZE_TURNSTILE_SITEKEY` | Public sitekey the frontend renders the Turnstile widget with |
 | `PRIZE_MIN_FORM_AGE_SECONDS`, `PRIZE_MAX_FORM_AGE_SECONDS` | Allowed age of `form_started_at` |
 | `PRIZE_USER_SUBMIT_INTERVAL_SECONDS` | Minimum spacing between submissions per user |
-| `PRIZE_BUMPER_AMOUNT_NPR` | Optional bumper prize amount shown on the Bumper Draw card |
+| `PRIZE_BUMPER_AMOUNT_NPR` | Optional bumper prize amount shown on the IRD lottery card |
 | `STORAGE_DIR` | Where uploaded documents are saved |
 | `MLFLOW_ENABLED`, `MLFLOW_TRACKING_URI`, `MLFLOW_EXPERIMENT` | Optional MLflow tracing (see [MLflow monitoring](#mlflow-monitoring)) |
 | `MLFLOW_LOG_CONTENT` | Also log chat query and answer text on `chat.turn` traces (default `false`) |
