@@ -32,7 +32,8 @@ async def corpus(app_engine):
     async with maker() as session:
         user_id = uuid.uuid4()
         session.add(User(id=user_id, email=f"{user_id}@eval.ranking",
-                         password_hash=hash_password("eval-password")))
+                         password_hash=hash_password("eval-password"),
+                         full_name="Eval Ranking User"))
         await session.flush()
         s = get_settings()
         for kind, title, text in seed_documents():

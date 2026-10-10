@@ -77,7 +77,7 @@ async def client(app_engine):
 
 async def _register(client, email: str | None = None) -> httpx.AsyncClient:
     email = email or f"{uuid.uuid4().hex[:8]}@example.com"
-    r = await client.post("/auth/register", json={"email": email, "password": "password123"})
+    r = await client.post("/auth/register", json={"email": email, "password": "password123", "full_name": "Test User"})
     assert r.status_code == 201, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 

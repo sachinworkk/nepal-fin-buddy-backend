@@ -22,7 +22,7 @@ def _reset_reranker():
 
 @pytest_asyncio.fixture
 async def user(db):
-    u = User(email=f"{uuid.uuid4().hex[:8]}@example.com", password_hash="x")
+    u = User(email=f"{uuid.uuid4().hex[:8]}@example.com", password_hash="x", full_name="Retrieval User")
     db.add(u)
     await db.commit()
     await db.refresh(u)

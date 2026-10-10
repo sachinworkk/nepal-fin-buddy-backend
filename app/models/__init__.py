@@ -49,7 +49,7 @@ class User(Base):
     id: Mapped[uuid.UUID] = _pk()
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
-    full_name: Mapped[str | None] = mapped_column(String(200))
+    full_name: Mapped[str] = mapped_column(String(200))
     preferred_language: Mapped[str] = mapped_column(String(2), default="en")
     created_at: Mapped[dt.datetime] = _now()
 
